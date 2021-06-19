@@ -2,7 +2,7 @@ import copy
 import math
 import random
 
-random.seed(3)
+random.seed(2)
 
 
 def _find_getch():
@@ -108,7 +108,7 @@ class Creature(Element):
     defaultInventorySize = 10
 
     def __init__(self, name: str, hp: int, abbreviation: str = "", strength: int = 1, xp: int = 0,
-                 weapon_slot: list = None) -> None:
+                 weapon_slot: list = None, powers_list: list = None) -> None:
         super().__init__(name, abbreviation)
         self.hp = hp
         self.default_hp = hp
@@ -119,6 +119,11 @@ class Creature(Element):
             self.weapon_slot = weapon_slot
         else:
             self.weapon_slot = []
+
+        if powers_list is not None:
+            self.powers_list = powers_list
+        else:
+            self.powers_list = []
 
         # self._inventory = [Weapon("HUGE Sword", "T", usage=None, durability=100, damage=100)]
         self._inventory = []
@@ -147,6 +152,11 @@ class Creature(Element):
         return True
 
     def hit(self, other: "Creature") -> None:
+
+        if len(other.powers_list) != 0:
+            for effect_infos_list in other.powers_list:
+                effect_infos_list[0].add_effect(
+                    effect_infos_list[0](the_game(), self, effect_infos_list[1], effect_infos_list[2]))
 
         if other.has_weapon() and other.has_an_hitting_weapon():
             self.hp -= other.current_weapon().damage
@@ -233,7 +243,8 @@ class Hero(Creature):
                 else:
                     res += '> ' + e + ' : ' + str(self.__dict__[e]) + '\n'
         res += '> INVENTORY : ' + str([x.name for x in self._inventory]) + '\n'
-        res += '> Effects : ' + str([f"{x.name}<{x.level}>" for x in the_game().activeEffects if x.creature is self])
+        res += '> Effects : ' + str(
+            [f"{x.name}<{x.level}>({x.duration})" for x in the_game().active_effects if x.creature is self])
 
         if self.has_weapon():
             res += '> Weapon : ' + str(self.current_weapon().name)
@@ -275,12 +286,15 @@ class Hero(Creature):
         if elem.use(self):
             self._inventory.remove(elem)
 
-    def delete_item(self, elem):
+    def delete_item(self, elem, throwing=False):
         """Delete an element from the inventory"""
         if len(self._inventory) > 0:
             if elem in self._inventory:
                 self._inventory.remove(elem)
-                the_game().add_message("You have successfully deleted the item : " + str(elem.name))
+                if throwing:
+                    the_game().add_message(f"You have successfully thrown the item : {elem.name}")
+                else:
+                    the_game().add_message(f"You have successfully deleted the item : {elem.name}")
             else:
                 the_game().add_message("Could not find the item to delete. Maybe try with another value")
 
@@ -318,8 +332,60 @@ class Hero(Creature):
         if self.stomach == 0:
             self.__dict__["hp"] -= 1
 
-    # def apply_all_amulets(self):
-    #     return True
+    @staticmethod
+    def choose_direction():
+        print("Choose a direction to orientate yourself using the keys to move")
+
+        c = getch()
+
+        if c in Map.dir:
+            return Map.dir[c]
+
+        return False
+
+    def throw_item(self, item, distance):
+
+        if not isinstance(item, Equipment):
+            return False
+
+        hero_coord = the_game().floor.pos(self)
+        direction = Hero.choose_direction()
+
+        if not direction:
+            return False
+
+        item_coord = hero_coord + direction
+
+        for i in range(distance):
+            if i == 0:
+                things_on_next_cell = the_game().floor.get(the_game().floor.pos(self) + direction)
+            else:
+                things_on_next_cell = the_game().floor.get(the_game().floor.pos(item) + direction)
+
+            if isinstance(things_on_next_cell, Creature):
+                item.use(things_on_next_cell, monster=True)
+                if i != 0:
+                    the_game().floor.rm(the_game().floor.pos(item))
+                self.delete_item(item, True)
+                break
+            elif isinstance(things_on_next_cell, Equipment):
+                if i != 0:
+                    the_game().floor.rm(the_game().floor.pos(item))
+                    self.delete_item(item, True)
+                break
+            elif things_on_next_cell != the_game().floor.ground:
+                if i == 0:
+                    the_game().add_message("You can't throw the item in this direction")
+                break
+            elif things_on_next_cell == the_game().floor.ground:
+                if i == 0:
+                    the_game().floor.put(item_coord, item)
+                    if i == distance - 1:
+                        self.delete_item(item, True)
+                else:
+                    the_game().floor.move(item, direction)
+            else:
+                raise NotImplementedError("WTF BRO")
 
 
 class Effect(object):
@@ -334,8 +400,11 @@ class Effect(object):
         self.level = 0
 
     def delete(self):
-        self.game.activeEffects.remove(self)
-        del self
+        try:
+            self.game.active_effects.remove(self)
+            del self
+        except ValueError:
+            pass
 
     def update(self):
         self.action()
@@ -350,10 +419,13 @@ class Effect(object):
     def action(self):
         self.game.add_message(self.info)
 
+    def add_effect(self):
+        self.game.active_effects.append(self)
+
     def activate(self) -> None:
         self.action()
-        if self not in self.game.activeEffects:
-            self.game.activeEffects.append(self)
+        if self not in self.game.active_effects:
+            self.add_effect()
 
     def deactivate(self):
         self.game.add_message(self.info)
@@ -361,7 +433,7 @@ class Effect(object):
 
     def clear(self, unique=True):
         effects_to_delete = []
-        for effect in self.game.activeEffects:
+        for effect in self.game.active_effects:
             if effect.creature is self.creature:
                 effects_to_delete.append(effect)
 
@@ -393,7 +465,7 @@ class EphemeralEffect(Effect):
         if kill:
             self.info = f"[{self.creature.name}] has been killed by {self.name}<{self.level}>"
         else:
-            self.info = f"[{self.creature.name}] {self.name} effect disappeared"
+            self.info = f"\n[{self.creature.name}] {self.name} effect disappeared"
         super().deactivate()
 
 
@@ -476,16 +548,17 @@ class HungerEffect(EphemeralEffect):
         self.value = self.level * HungerEffect.LEVEL_FACTOR
 
     def action(self):
-        self.creature.stomach -= self.value
-        self.info = f"[{self.creature.name}] | {self.name}<{self.level}> | {HungerEffect.DESCRIPTION}{self.value}"
-        super().action()
+        if isinstance(self.creature, Hero):
+            self.creature.stomach -= self.value
+            self.info = f"[{self.creature.name}] | {self.name}<{self.level}> | {HungerEffect.DESCRIPTION}{self.value}"
+            super().action()
 
 
 class TeleportEffect(EphemeralEffect):  # IS AN INSTANT EFFECT
 
     DESCRIPTION = "You have been teleported"
 
-    def __init__(self, game, creature, duration=None):
+    def __init__(self, game, creature, duration=1):
         super().__init__(game, creature, duration, 0)
         self.name = "Teleportation"
 
@@ -591,23 +664,16 @@ class Equipment(Element):
         the_game().add_message("You pick up a " + self.name)
         return True
 
-    def use(self, creature):
+    def use(self, creature, monster=False):
         """Uses the piece of equipment. Has effect on the hero according usage.
             Return True if the object is consumed."""
         if self.usage is None:
-            the_game().add_message("The " + self.name + " is not usable")
+            if not monster:
+                the_game().add_message(f"The {creature.name} can't use the item {self.name}")
             return False
 
-        elif isinstance(self, Weapon) and self.weaponType != Weapon._weapon_type_list[
-            0]:  # The weapon is not an hitting weapon
-            the_game().add_message("The " + creature.name + " uses the " + self.name)
-
-            # if self.durability != None:
-            #     self.durability -= 1
-            return self.usage(self, creature)
-
         else:
-            the_game().add_message("The " + creature.name + " uses the " + self.name)
+            the_game().add_message(f"The {creature.name} uses the item {self.name}")
             return self.usage(self, creature)
 
     # def isDurabilityValid(self):
@@ -876,12 +942,6 @@ class Map(object):
                 if self.get(c + d) in [Map.ground, self.hero]:
                     self.move(e, d)
 
-    def apply_poison_to_all_monsters(self):
-
-        for e in self._elem:
-            if isinstance(e, Creature) and not isinstance(e, Hero):
-                PoisonEffect.activate(PoisonEffect(the_game(), e, 10, 1))
-
 
 class Game(object):
     """ Class representing game state """
@@ -920,6 +980,8 @@ class Game(object):
                     Creature("Bat", hp=2, abbreviation="W", xp=2)],
                 1: [Creature("Ork", hp=6, strength=2, xp=10),
                     Creature("Blob", hp=10, xp=8)],
+                3: [Creature("Poisonous spider", hp=5, xp=10, strength=0, abbreviation="&",
+                             powers_list=[[PoisonEffect, 2, 1]])],
                 5: [Creature("Dragon", hp=20, strength=3, xp=100)],
                 }
 
@@ -944,13 +1006,14 @@ class Game(object):
                     isinstance(elem, Weapon) for elem in hero._inventory) else the_game().add_message(
                     "You don't have any weapon in your inventory"),
                 'n': lambda hero: hero.remove_current_weapon(),
+                'l': lambda hero: hero.throw_item(the_game().select(hero._inventory), 5)
 
                 }
 
     def __init__(self, level=1, _message=None, hero=None, floor=None, number_of_round=0):
 
         self.level = level
-        self.activeEffects = []
+        self.active_effects = []
 
         if hero is None:
             hero = Hero()
@@ -967,7 +1030,7 @@ class Game(object):
         else:
             self.floor = None
 
-        self.numberOfRound = number_of_round
+        self.number_of_round = number_of_round
 
     def build_floor(self):
         """Creates a map for the current floor."""
@@ -1039,19 +1102,6 @@ class Game(object):
 
         self.build_floor()
 
-        # self.hero.weaponSlot.append(the_game().weapons[0][0]) #BASIC SWORD
-
-        # PoisonEffect.activate(PoisonEffect(self, self.hero, 1, 1), False)
-
-        # StrengthEffect.activate(StrengthEffect(self, self.hero, 10, 5))
-
-        # HealEffect.activate(HealEffect(self, self.hero, 5, 1))
-        # PoisonEffect.activate(PoisonEffect(self, self.hero, 5, 2))
-
-        # FeedEffect.activate(FeedEffect(self, self.hero, 5, 1))
-        # HungerEffect.activate(HungerEffect(self, self.hero, 5, 2))
-        # self.floor.apply_poison_to_all_monsters()
-
         print("--- Welcome Hero! ---")
 
         while self.hero.hp > 0:
@@ -1072,18 +1122,17 @@ class Game(object):
                 if c in {"a", "z", "e", "q", "d", "w", "x", "c"}:
 
                     self.floor.move_all_monsters()
-                    self.numberOfRound += 1
-                    self.add_message(f"Number of round : {self.numberOfRound}")
+                    self.number_of_round += 1
 
-                    if self.numberOfRound % 20 == 0 and self.hero.stomach > 0:
+                    if self.number_of_round % 20 == 0 and self.hero.stomach > 0:
                         self.hero.stomach -= 1
 
                     self.hero.verify_stomach()
 
-                    if len(self.activeEffects) != 0:
+                    if len(self.active_effects) != 0:
                         i = 0
-                        while i < len(self.activeEffects):
-                            if not self.activeEffects[i].update():
+                        while i < len(self.active_effects):
+                            if not self.active_effects[i].update():
                                 i += 1
 
         print("--- Game Over ---")
