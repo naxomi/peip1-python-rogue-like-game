@@ -1,40 +1,21 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Created on Thu Jun 17 21:13:57 2021
-
-@author: raphaelanjou
-"""
-
 import copy
 import math
 import random
-import copy
 
-# from enums import Enum
-# import os
-# import pickle
-
-random.seed(1)
-
-import json
-
-
-# class EffectType(Enum):
-#     EPHEMERE = 0
-#     CONSTANT = 1
+random.seed(3)
 
 
 def _find_getch():
-    """Single char input, only works only on mac/linux/windows OS terminals"""
     try:
         import termios
     except ImportError:
-        # Non-POSIX. Return msvcrt's (Windows') getch.
+        # Non-POSIX. Return msvcrt (Windows') getch.
         import msvcrt
         return lambda: msvcrt.getch().decode('utf-8')
     # POSIX system. Create and return a getch that manipulates the tty.
-    import sys, tty
+    import sys
+    import tty
+
     def _getch():
         fd = sys.stdin.fileno()
         old_settings = termios.tcgetattr(fd)
@@ -48,7 +29,7 @@ def _find_getch():
     return _getch
 
 
-def sign(x):
+def sign(x: int) -> int:
     if x > 0:
         return 1
     return -1
@@ -57,28 +38,33 @@ def sign(x):
 class Coord(object):
     """Implementation of a map coordinate"""
 
-    def __init__(self, x, y):
+    def __init__(self, x: int, y: int) -> None:
+        """
+        Is a coordinate of the map
+        :param x: x coordinate
+        :param y: y coordinate
+        """
         self.x = x
         self.y = y
 
-    def __eq__(self, other):
+    def __eq__(self, other: "Coord") -> bool:
         return self.x == other.x and self.y == other.y
 
-    def __repr__(self):
-        return '<' + str(self.x) + ',' + str(self.y) + '>'
+    def __repr__(self) -> str:
+        return f"<{str(self.x)},{str(self.y)}>"
 
-    def __add__(self, other):
+    def __add__(self, other: "Coord") -> "Coord":
         return Coord(self.x + other.x, self.y + other.y)
 
-    def __sub__(self, other):
+    def __sub__(self, other: "Coord") -> "Coord":
         return Coord(self.x - other.x, self.y - other.y)
 
-    def distance(self, other):
+    def distance(self, other: "Coord") -> float:
         """Returns the distance between two coordinates."""
         d = self - other
         return math.sqrt(d.x * d.x + d.y * d.y)
 
-    def direction(self, other):
+    def direction(self, other: "Coord") -> "Coord":
         """Returns the direction between two coordinates."""
         cos45 = 1 / math.sqrt(2)
 
@@ -97,20 +83,20 @@ class Element(object):
     """Base class for game elements. Have a name.
         Abstract class."""
 
-    def __init__(self, name, abbrv=""):
+    def __init__(self, name: str, abbreviation: str = "") -> None:
         self.name = name
-        if abbrv == "":
-            abbrv = name[0]
-        self.abbrv = abbrv
+        if abbreviation == "":
+            abbreviation = name[0]
+        self.abbreviation = abbreviation
 
-    def __repr__(self):
-        return self.abbrv
+    def __repr__(self) -> str:
+        return self.abbreviation
 
-    def description(self):
+    def description(self) -> str:
         """Description of the element"""
-        return "<" + self.name + ">"
+        return f"<{self.name}>"
 
-    def meet(self, hero):
+    def meet(self, hero: "Hero") -> None:
         """Makes the hero meet an element. Not implemented. """
         raise NotImplementedError('Abstract Element')
 
@@ -121,157 +107,91 @@ class Creature(Element):
 
     defaultInventorySize = 10
 
-    def __init__(self, name, hp, abbrv="", strength=1, xp=1, weaponSlot=None):
-        Element.__init__(self, name, abbrv)
+    def __init__(self, name: str, hp: int, abbreviation: str = "", strength: int = 1, xp: int = 0,
+                 weapon_slot: list = None) -> None:
+        super().__init__(name, abbreviation)
         self.hp = hp
-        self._defaultHp = hp
+        self.default_hp = hp
         self.strength = strength
         self.xp = xp
 
-        if weaponSlot != None:
-            self.weaponSlot = weaponSlot
+        if weapon_slot is not None:
+            self.weapon_slot = weapon_slot
         else:
-            self.weaponSlot = []
+            self.weapon_slot = []
 
         # self._inventory = [Weapon("HUGE Sword", "T", usage=None, durability=100, damage=100)]
         self._inventory = []
 
-        self._ephemereEffects = {}
-        self._constantEffectsToApply = {}
-        self._constantEffectsApplied = {}
-
-    def description(self):
+    def description(self) -> str:
         """Description of the creature"""
         if self.hp > 0:
             return Element.description(self) + "(" + str(self.hp) + ")"
         return Element.description(self) + "(0)"
 
-    def meet(self, other):
+    def gain_xp(self, xp_point):
+        raise NotImplementedError
+
+    def meet(self, other: "Creature") -> bool:
+
         """The creature is encountered by an other creature.
             The other one hits the creature. Return True if the creature is dead."""
 
         self.hit(other)
 
-        theGame().addMessage("The " + other.name + " hits the " + self.description())
+        the_game().add_message("The " + other.name + " hits the " + self.description())
         if self.hp > 0:
             return False
         if isinstance(self, Creature) and not isinstance(self, Hero):
-            other.gainXP(self.xp)
+            other.gain_xp(self.xp)
         return True
 
-    def hit(self, other):
+    def hit(self, other: "Creature") -> None:
 
-        if other.hasWeapon() and other.hasAnHittingWeapon():
-            self.hp -= other.currentWeapon().damage
+        if other.has_weapon() and other.has_an_hitting_weapon():
+            self.hp -= other.current_weapon().damage
         else:
             self.hp -= other.strength
 
-    def addEffect(self, effect, unique=True):
-        """The hero now has a new effect, maybe after using a potion or being attacked"""
+    def equip_weapon(self, weapon: "Weapon") -> None:
+        if len(self.weapon_slot) != 0:
+            self._inventory.append(self.weapon_slot[0])
+            self.weapon_slot.clear()
 
-        effect.effectFunc(self, effect.value)
-
-        # theGame().addMessage("----------------\n")
-        # theGame().addMessage(f"{object.__repr__(self)}, {self.name}\n")
-        # theGame().addMessage("----------------\n")
-
-        effect = copy.copy(effect)
-        if effect.effectType == "constant":
-            self._constantEffectsApplied[effect] = [None, effect.value]
-
-        elif effect.effectType == "ephemere" and effect.duration != 1:
-            self._ephemereEffects[effect] = [effect.duration - 1, effect.value]
-
-        return unique
-
-    def removeConstantEffect(self, effect):
-        effect.power(self, -self._constantEffects[effect][1])
-
-        if effect in self._constantEffectsApplied:
-            del self._constantEffectsApplied[effect]
-        elif effect in self._constantEffectsToApply:
-            del self._constantEffectsToApply[effect]
-
-    def removeEphemereEffect(self, effect):
-        del self._ephemereEffects[effect]
-
-    """ Is used to remove all the effects (constant, ephemere, instant) """
-
-    def removeAllEffects(self, unique=True):
-        self._ephemereEffects.clear()
-        self._constantEffectsToApply.clear()
-
-        # Invert the constant effects before removing them
-
-        for effect in self._constantEffectsApplied.keys():
-            effect.effectFunc(self, -self._constantEffectsApplied[effect][1])
-
-        self._constantEffectsApplied.clear()
-
-        return unique
-
-    def applyAllEffects(self):
-
-        # Appliquer les effets ephemere
-        ephemereEffectsToDel = []
-
-        for effect in self._ephemereEffects.keys():
-            effect.effectFunc(self, self._ephemereEffects[effect][1])
-
-            self._ephemereEffects[effect][0] -= 1
-
-            if self._ephemereEffects[effect][0] == 0:
-                ephemereEffectsToDel.append(effect)
-
-        for ephemereEffectToDel in ephemereEffectsToDel:
-            del self._ephemereEffects[ephemereEffectToDel]
-
-        # Appliquer les effets constants
-        for effect in self._constantEffectsToApply.keys():
-            effect.effectFunc(self, self._constantEffectsToApply[effect][1])
-
-        self._constantEffectsApplied.update(self._constantEffectsToApply)
-        self._constantEffectsToApply.clear()
-
-    def equipWeapon(self, weapon):
-        if len(self.weaponSlot) != 0:
-            self._inventory.append(self.weaponSlot[0])
-            self.weaponSlot.clear()
-
-        self.weaponSlot.append(weapon)
+        self.weapon_slot.append(weapon)
         self._inventory.remove(weapon)
 
-    def removeCurrentWeapon(self):
-        if self.currentWeapon() != False:
+    def remove_current_weapon(self) -> None:
+        if self.current_weapon():
             if len(self._inventory) <= self.defaultInventorySize:
-                self._inventory.append(self.currentWeapon())
-                self.weaponSlot.clear()
-                theGame().addMessage("You removed your weapon from it's slot")
+                self._inventory.append(self.current_weapon())
+                self.weapon_slot.clear()
+                the_game().add_message("You removed your weapon from it's slot")
             else:
-                theGame().addMessage("You don't have any space in your inventory to place your weapon")
+                the_game().add_message("You don't have any space in your inventory to place your weapon")
         else:
-            theGame().addMessage("You currently don't have a weapon to remove from it's slot")
+            the_game().add_message("You currently don't have a weapon to remove from it's slot")
 
-    def hasWeapon(self):
-        if len(self.weaponSlot) >= 1:
+    def has_weapon(self) -> bool:
+        if len(self.weapon_slot) >= 1:
             return True
 
-    def currentWeapon(self):
-        if self.hasWeapon():
-            return self.weaponSlot[0]
+    def current_weapon(self) -> bool or "Weapon":
+        if self.has_weapon():
+            return self.weapon_slot[0]
         else:
             return False
 
-    def hasAnHittingWeapon(self):
-        if self.currentWeapon().weaponType == Weapon._weaponTypeList[0]:
+    def has_an_hitting_weapon(self):
+        if self.current_weapon().weaponType == Weapon._weapon_type_list[0]:
             return True
 
-    def hasAThrowingWeapon(self):
-        if self.currentWeapon().weaponType == Weapon._weaponTypeList[1]:
+    def has_a_throwing_weapon(self):
+        if self.current_weapon().weaponType == Weapon._weapon_type_list[1]:
             return True
 
-    def hasAProjectileWeapon(self):
-        if self.currentWeapon().weaponType == Weapon._weaponTypeList[2]:
+    def has_a_projectile_weapon(self):
+        if self.current_weapon().weaponType == Weapon._weapon_type_list[2]:
             return True
 
     # def applyStuffEffects(self):
@@ -284,61 +204,63 @@ class Hero(Creature):
 
     defaultLevelSize = 25
 
-    def __init__(self, name="Hero", hp=10, abbrv="@", strength=2, level=1, xp=0, gold=0, stomach=10, weaponSlot=None):
-        Creature.__init__(self, name, hp, abbrv, strength, weaponSlot)
+    def __init__(self, name="Hero", hp=10, abbreviation="@", strength=2, level=1, xp=0, gold=0, stomach=10,
+                 weapon_slot=None):
+        Creature.__init__(self, name, hp, abbreviation, strength, xp, weapon_slot)
 
         self.xp = xp
         self.level = level
         self.gold = gold
         self.stomach = stomach
-        self._defaultStomachSize = stomach
+        self.default_stomach_size = stomach
 
     def description(self):
         """Description of the hero"""
-        if len(self.weaponSlot) != 0:
-            return Creature.description(self) + str(self._inventory) + " |" + str(self.currentWeapon()) + "|"
+        if len(self.weapon_slot) != 0:
+            return Creature.description(self) + str(self._inventory) + " |" + str(self.current_weapon()) + "|"
         else:
             return Creature.description(self) + str(self._inventory)
 
-    def fullDescription(self):
+    def full_description(self):
         """Complete description of the hero"""
         res = ''
         for e in self.__dict__:
 
-            if e[0] != '_':
+            if e[0] != '_' and "default" not in e:
                 if e == "xp":
                     res += '> ' + e + ' : ' + str(self.__dict__[e]) + "/" + str(
                         self.defaultLevelSize * self.level) + '\n'
                 else:
                     res += '> ' + e + ' : ' + str(self.__dict__[e]) + '\n'
         res += '> INVENTORY : ' + str([x.name for x in self._inventory]) + '\n'
-        res += '> Effects : ' + str([x.name for x in theGame().activeEffects if x.creature is self])
+        res += '> Effects : ' + str([f"{x.name}<{x.level}>" for x in the_game().activeEffects if x.creature is self])
 
-        if self.hasWeapon():
-            res += '> Weapon : ' + str(self.currentWeapon().name)
+        if self.has_weapon():
+            res += '> Weapon : ' + str(self.current_weapon().name)
         return res
 
-    def checkEquipment(self, o):
+    @staticmethod
+    def check_equipment(o):
         """Check if o is an Equipment."""
         if not isinstance(o, Equipment):
             raise TypeError('Not a Equipment')
 
     def take(self, elem):
         """The hero takes adds the equipment to its inventory"""
-        self.checkEquipment(elem)
+        self.check_equipment(elem)
         if elem.name == "gold":
             self.gold += 1
         else:
             self._inventory.append(elem)
 
             if len(self._inventory) > Hero.defaultInventorySize:
-                theGame().addMessage("You don't have enough space in your inventory")
+                the_game().add_message("You don't have enough space in your inventory")
 
-    def checkInventorySize(self):
+    def check_inventory_size(self):
         if len(self._inventory) > Hero.defaultInventorySize:
             while True:
                 try:
-                    self.deleteItem(theGame().select(self._inventory, True))
+                    self.delete_item(the_game().select(self._inventory))
                     break
                 except:
                     print("Wrong value entered.")
@@ -347,59 +269,59 @@ class Hero(Creature):
         """Use a piece of equipment"""
         if elem is None:
             return
-        self.checkEquipment(elem)
+        self.check_equipment(elem)
         if elem not in self._inventory:
             raise ValueError('Equipment ' + elem.name + 'not in inventory')
         if elem.use(self):
             self._inventory.remove(elem)
 
-    def deleteItem(self, elem):
+    def delete_item(self, elem):
         """Delete an element from the inventory"""
         if len(self._inventory) > 0:
             if elem in self._inventory:
                 self._inventory.remove(elem)
-                theGame().addMessage("You have succesfully deleted the item : " + str(elem.name))
+                the_game().add_message("You have successfully deleted the item : " + str(elem.name))
             else:
-                theGame().addMessage("Could not find the item to delete. Maybe try with another value")
+                the_game().add_message("Could not find the item to delete. Maybe try with another value")
 
-    def gainXP(self, creatureXP):
+    def gain_xp(self, creature_xp):
 
-        self.xp += creatureXP
+        self.xp += creature_xp
 
-        theGame().addMessage("You gained {0} XP points".format(creatureXP))
+        the_game().add_message("You gained {0} XP points".format(creature_xp))
 
-        xpToUse = self.xp
-        levelSteps = self.defaultLevelSize * self.level
-        levelWon = 0
+        xp_to_use = self.xp
+        level_steps = self.defaultLevelSize * self.level
+        level_won = 0
 
-        if xpToUse > levelSteps:
-            while xpToUse > levelSteps:
-                xpToUse -= levelSteps
+        if xp_to_use > level_steps:
+            while xp_to_use > level_steps:
+                xp_to_use -= level_steps
 
-                self.gainLevel(1)
+                self.gain_level(1)
 
-                levelSteps = self.defaultLevelSize * self.level
-                levelWon += 1
+                level_steps = self.defaultLevelSize * self.level
+                level_won += 1
 
-            self.xp = xpToUse
-            theGame().addMessage("You won {0} level(s) and are now level {1}".format(levelWon, self.level))
+            self.xp = xp_to_use
+            the_game().add_message("You won {0} level(s) and are now level {1}".format(level_won, self.level))
 
-    def gainLevel(self, nbOfLevel):
+    def gain_level(self, nb_of_level):
         self.level += 1
-        self.strength += nbOfLevel
-        self.gold += nbOfLevel + self.level
+        self.strength += nb_of_level
+        self.gold += nb_of_level + self.level
 
-        theGame().addMessage("You now have a strength of {0} and won {1} gold coins".format(self.strength, self.level))
+        the_game().add_message(
+            "You now have a strength of {0} and won {1} gold coins".format(self.strength, self.level))
 
-    def verifyStomach(self):
+    def verify_stomach(self):
         if self.stomach == 0:
             self.__dict__["hp"] -= 1
 
-    def applyAllAmulets(self):
-        return True
+    # def apply_all_amulets(self):
+    #     return True
 
 
-### EFFECTS
 class Effect(object):
 
     def __init__(self, game, creature):
@@ -408,6 +330,8 @@ class Effect(object):
         self.name = ""
         self.value = 0
         self.info = ""
+        self.duration = None
+        self.level = 0
 
     def delete(self):
         self.game.activeEffects.remove(self)
@@ -416,162 +340,177 @@ class Effect(object):
     def update(self):
         self.action()
 
-        if self.duration != None:
+        if self.duration is not None:
             self.duration -= 1
 
             if self.duration <= 0:
-                self.desactivate()
+                self.deactivate()
+                return True
 
     def action(self):
-        self.game.addMessage(self.info)
+        self.game.add_message(self.info)
 
-    def activate(self):
+    def activate(self) -> None:
         self.action()
         if self not in self.game.activeEffects:
             self.game.activeEffects.append(self)
 
-    def desactivate(self):
-        self.game.addMessage(self.info)
+    def deactivate(self):
+        self.game.add_message(self.info)
         self.delete()
 
-    ### EPHEMERE EFFECTS
+    def clear(self, unique=True):
+        effects_to_delete = []
+        for effect in self.game.activeEffects:
+            if effect.creature is self.creature:
+                effects_to_delete.append(effect)
+
+        for effect in effects_to_delete:
+            Effect.delete(effect)
+
+        return unique
 
 
-class EphemereEffect(Effect):
+class EphemeralEffect(Effect):
 
-    def activate(self):
+    def __init__(self, game, creature, duration, level):
+        super().__init__(game, creature)
+        self.duration = duration
+        self.level = level
+
+    def activate(self, unique: bool = True) -> bool:
         super().activate()
 
-        self.duration -= 1
+        if self.duration is not None:
+            self.duration -= 1
 
-        if self.duration <= 0:
-            self.desactivate()
+            if self.duration <= 0:
+                self.deactivate()
+
+        return unique
+
+    def deactivate(self, kill: bool = False) -> None:
+        if kill:
+            self.info = f"[{self.creature.name}] has been killed by {self.name}<{self.level}>"
+        else:
+            self.info = f"[{self.creature.name}] {self.name} effect disappeared"
+        super().deactivate()
 
 
-class HealEffect(EphemereEffect):
+class HealEffect(EphemeralEffect):
     LEVEL_FACTOR = 1
     DESCRIPTION = "Recovering hp : +"
 
     def __init__(self, game, creature, duration, level):
-        super().__init__(game, creature)
+        super().__init__(game, creature, duration, level)
         self.name = "Heal"
-        self.duration = duration
-        self.level = level
         self.value = self.level * HealEffect.LEVEL_FACTOR
 
     def action(self):
-        if self.creature._defaultHp > self.creature.hp + self.value:
+        if self.creature.default_hp > self.creature.hp + self.value:
             self.creature.hp += self.value
-            self.info = f"[{self.creature.name}] | {self.name}<{self.level}> | {HealEffect.DESCRIPTION}{self.value}.\n"
+            self.info = f"[{self.creature.name}] | {self.name}<{self.level}> | {HealEffect.DESCRIPTION}{self.value}"
 
         else:
-            self.creature.hp = self.creature._defaultHp
-            self.info = f"[{self.creature.name}] | {self.name}<{self.level}> | Full Health : {self.creature.hp}/{self.creature.hp}.\n"
+            self.creature.hp = self.creature.default_hp
+            self.info = f"[{self.creature.name}] | {self.name}<{self.level}> | Full Health : {self.creature.hp}/{self.creature.hp}"
 
         super().action()
 
-    def desactivate(self):
-        self.info = f"[{self.creature.name}] heal effect disappeared"
-        super().desactivate()
 
-
-class PoisonEffect(EphemereEffect):
+class PoisonEffect(EphemeralEffect):
     LEVEL_FACTOR = 1
     DESCRIPTION = "Losing hp : -"
 
     def __init__(self, game, creature, duration, level):
-        super().__init__(game, creature)
+        super().__init__(game, creature, duration, level)
         self.name = "Poison"
-        self.duration = duration
-        self.level = level
         self.value = self.level * PoisonEffect.LEVEL_FACTOR
 
     def action(self):
         self.creature.hp -= self.value
-
         self.info = f"[{self.creature.name}] | {self.name}<{self.level}> | {PoisonEffect.DESCRIPTION}{self.value}"
-        super().action()
 
-    def desactivate(self):
-        self.info = f"[{self.creature.name}] poison effect disappeared"
-        super().desactivate()
+        if self.creature.hp == 0:
+            self.game.floor.rm(self.game.floor.pos(self.creature))
+            super().deactivate(True)
+        else:
+            super().action()
 
 
-class FeedEffect(EphemereEffect):
+class FeedEffect(EphemeralEffect):
+    """
+    Effect used to feed the hero. Creatures don't have a stomach so they can't be applied this effect.
+    """
     LEVEL_FACTOR = 1
     DESCRIPTION = "I'm eating : +"
 
     def __init__(self, game, creature, duration, level):
-        super().__init__(game, creature)
+
+        if not isinstance(creature, Hero):
+            raise TypeError("The creature for this effect must be a hero.")
+
+        super().__init__(game, creature, duration, level)
         self.name = "Feed"
-        self.duration = duration
-        self.level = level
         self.value = self.level * FeedEffect.LEVEL_FACTOR
 
-    def action(self):
-        if self.creature._defaultStomachSize >= self.creature.stomach + self.value:
+    def action(self) -> None:
+        if self.creature.default_stomach_size > self.creature.stomach + self.value:
             self.creature.stomach += self.value
-        else:
-            self.creature.stomach = self.creature._defaultStomachSize
+            self.info = f"[{self.creature.name}] | {self.name}<{self.level}> | {FeedEffect.DESCRIPTION}{self.value}"
 
-        self.info = f"[{self.creature.name}] | {self.name}<{self.level}> | {FeedEffect.DESCRIPTION}{self.value}"
+        else:
+            self.creature.hp = self.creature.default_hp
+            self.info = f"[{self.creature.name}] | {self.name}<{self.level}> | Max food : {self.creature.stomach}/{self.creature.stomach}"
+
         super().action()
 
-    def desactivate(self):
-        self.info = f"[{self.creature.name}] feed effect disappeared"
-        super().desactivate()
 
-
-class HungerEffect(EphemereEffect):
+class HungerEffect(EphemeralEffect):
     LEVEL_FACTOR = 1
-    DESCRIPTION = "I'm hungry -"
+    DESCRIPTION = "I'm hungry : -"
 
     def __init__(self, game, creature, duration, level):
-        super().__init__(self, game, creature)
+        super().__init__(game, creature, duration, level)
         self.name = "Hunger"
-        self.duration = duration
-        self.level = level
         self.value = self.level * HungerEffect.LEVEL_FACTOR
 
-    def activate(self):
+    def action(self):
         self.creature.stomach -= self.value
-
         self.info = f"[{self.creature.name}] | {self.name}<{self.level}> | {HungerEffect.DESCRIPTION}{self.value}"
-        super().activate()
-
-    def desactivate(self):
-        self.info = f"[{self.creature.name}] hunger effect disappeared"
-        super().desactivate()
+        super().action()
 
 
-class TeleportEffect(EphemereEffect):  # IS AN INSTANT EFFECT
+class TeleportEffect(EphemeralEffect):  # IS AN INSTANT EFFECT
 
     DESCRIPTION = "You have been teleported"
 
+    def __init__(self, game, creature, duration=None):
+        super().__init__(game, creature, duration, 0)
+        self.name = "Teleportation"
+
     def action(self):
         """Teleport the creature"""
-        r = self.game.floor.randRoom()
-        c = r.randCoord()
+        r = self.game.floor.rand_room()
+        c = r.rand_coord()
+
         while not self.game.floor.get(c) == Map.ground:
-            c = r.randCoord()
+            c = r.rand_coord()
         self.game.floor.rm(self.game.floor.pos(self.creature))
         self.game.floor.put(c, self.creature)
 
-        if isinstance(self.creature, Hero):
-            self.info = TeleportEffect.DESCRIPTION
-        else:
-            self.info = f"The creature <{self.creature.name}> has been teleported"
+        self.info = f"The creature <{self.creature.name}> has been teleported"
 
 
-### CONSTANT EFFECTS
-
+# CONSTANT EFFECTS
+'''
 class ConstantEffect(Effect):
 
     def __init__(self, game, creature):
         super().__init__(game, creature)
         self.hasBeenActivated = False
 
-    def activate(self, game, creature):
+    def activate(self):
         if not self.hasBeenActivated:
             super().activate()
             self.hasBeenActivated = True
@@ -580,7 +519,7 @@ class ConstantEffect(Effect):
 class StrengthEffect(ConstantEffect):
     LEVEL_FACTOR = 1
     DESCRIPTION_ACTIVATE = "I feel stronger : +"
-    DESCRIPTION_DESACTIVATE = "- End of boost - I feel weaker... : -"
+    DESCRIPTION_DEACTIVATE = "- End of boost - I feel weaker... : -"
 
     def __init__(self, game, creature, duration=None, level=1):
         super().__init__(game, creature)
@@ -596,19 +535,19 @@ class StrengthEffect(ConstantEffect):
         super().action()
 
     def activate(self):
-        super().activate(self.game, self.creature)
+        super().activate()
 
-    def desactivate(self):
+    def deactivate(self):
         self.creature.strength -= self.value
 
-        self.info = f"[{self.creature.name}] | {self.name}<{self.level}> | {HungerEffect.DESCRIPTION_DESACTIVATE}{self.value}"
-        super().desactivate()
+        self.info = f"[{self.creature.name}] | {self.name}<{self.level}> | {StrengthEffect.DESCRIPTION_DEACTIVATE}{self.value}"
+        super().deactivate()
 
 
 class WeaknessEffect(ConstantEffect):
     LEVEL_FACTOR = 1
     DESCRIPTION_ACTIVATE = "I feel weaker : +"
-    DESCRIPTION_DESACTIVATE = "- End of malus - I feel stronger... : -"
+    DESCRIPTION_DEACTIVATE = "- End of malus - I feel stronger... : -"
 
     def __init__(self, game, creature, duration, level):
         super().__init__(self, game, creature)
@@ -627,47 +566,48 @@ class WeaknessEffect(ConstantEffect):
         if isinstance(self.creature, Hero):
             self.info = f"{self.name}<{self.level}> | {WeaknessEffect.DESCRIPTION_ACTIVATE}{self.value}"
 
-    def desactivate(self):
+    def deactivate(self):
         self.creature.strength += self.value
 
         if isinstance(self.creature, Hero):
-            self.info = f"{self.name}<{self.level}> | {WeaknessEffect.DESCRIPTION_DESACTIVATE}{self.value}"
+            self.info = f"{self.name}<{self.level}> | {WeaknessEffect.DESCRIPTION_DEACTIVATE}{self.value}"
 
-        super().desactivate()
+        super().deactivate()
+'''
 
 
-### EQUIPMENT
+# EQUIPMENT
 class Equipment(Element):
     """A piece of equipment"""
 
-    def __init__(self, name, abbrv="", usage=None, durability=None):
-        Element.__init__(self, name, abbrv)
+    def __init__(self, name, abbreviation="", usage=None, durability=None):
+        Element.__init__(self, name, abbreviation)
         self.usage = usage
         self.durability = durability
 
     def meet(self, hero):
         """Makes the hero meet an element. The hero takes the element."""
         hero.take(self)
-        theGame().addMessage("You pick up a " + self.name)
+        the_game().add_message("You pick up a " + self.name)
         return True
 
     def use(self, creature):
         """Uses the piece of equipment. Has effect on the hero according usage.
             Return True if the object is consumed."""
         if self.usage is None:
-            theGame().addMessage("The " + self.name + " is not usable")
+            the_game().add_message("The " + self.name + " is not usable")
             return False
 
-        elif isinstance(self, Weapon) and self.weaponType != Weapon._weaponTypeList[
+        elif isinstance(self, Weapon) and self.weaponType != Weapon._weapon_type_list[
             0]:  # The weapon is not an hitting weapon
-            theGame().addMessage("The " + creature.name + " uses the " + self.name)
+            the_game().add_message("The " + creature.name + " uses the " + self.name)
 
             # if self.durability != None:
             #     self.durability -= 1
             return self.usage(self, creature)
 
         else:
-            theGame().addMessage("The " + creature.name + " uses the " + self.name)
+            the_game().add_message("The " + creature.name + " uses the " + self.name)
             return self.usage(self, creature)
 
     # def isDurabilityValid(self):
@@ -679,28 +619,28 @@ class Equipment(Element):
 class Weapon(Equipment):
     """A weapon which can be used by the Hero or the monsters"""
 
-    _weaponTypeList = ["hit", "throw", "projectile"]
+    _weapon_type_list = ["hit", "throw", "projectile"]
 
-    def __init__(self, name, abbrv="", weaponType=_weaponTypeList[0], usage=None, effectsList=None, damage=1,
+    def __init__(self, name, abbreviation="", weapon_type=_weapon_type_list[0], usage=None, effects_list=None, damage=1,
                  durability=10):
-        Equipment.__init__(self, name, abbrv, usage, durability)
-        self.weaponType = weaponType
+        Equipment.__init__(self, name, abbreviation, usage, durability)
+        self.weaponType = weapon_type
 
-        if effectsList != None:
-            self.effectsList = effectsList  # effects applied to the creature being hit
+        if effects_list is not None:
+            self.effectsList = effects_list  # effects applied to the creature being hit
         else:
             self.effectsList = []
 
         self.damage = damage
 
-    def applyWeaponEffects(self, creature):
+    def apply_weapon_effects(self, creature):
         for effect in self.effectsList:
-            creature.addEffect(effect, True)
+            creature.add_effect(effect, True)
 
     def throw(self, distance):
         return
 
-    def launchProjectile(distance, projectileToUse):
+    def launch_projectile(self, distance, projectile_to_use):
         return
 
 
@@ -710,8 +650,8 @@ class Projectile(object):
 
 class Amulet(Equipment):
 
-    def __init__(self, name, abbrv="", usage=None, durability=None):
-        Equipment.__init__(self, name, abbrv, usage, durability)
+    def __init__(self, name, abbreviation="", usage=None, durability=None):
+        Equipment.__init__(self, name, abbreviation, usage, durability)
 
 
 class Room(object):
@@ -737,21 +677,21 @@ class Room(object):
         """Returns the coordinates of the room center"""
         return Coord((self.c1.x + self.c2.x) // 2, (self.c1.y + self.c2.y) // 2)
 
-    def randCoord(self):
+    def rand_coord(self):
         """A random coordinate inside the room"""
         return Coord(random.randint(self.c1.x, self.c2.x), random.randint(self.c1.y, self.c2.y))
 
-    def randEmptyCoord(self, map):
+    def rand_empty_coord(self, map):
         """A random coordinate inside the room which is free on the map."""
-        c = self.randCoord()
+        c = self.rand_coord()
         while map.get(c) != Map.ground or c == self.center():
-            c = self.randCoord()
+            c = self.rand_coord()
         return c
 
     def decorate(self, map):
         """Decorates the room by adding a random equipment and monster."""
-        map.put(self.randEmptyCoord(map), theGame().randEquipment())
-        map.put(self.randEmptyCoord(map), theGame().randMonster())
+        map.put(self.rand_empty_coord(map), the_game().rand_equipment())
+        map.put(self.rand_empty_coord(map), the_game().rand_monster())
 
 
 class Map(object):
@@ -759,14 +699,14 @@ class Map(object):
         Contains game elements."""
 
     ground = '.'  # A walkable ground cell
-    dir = {'z': Coord(0, -1), \
-           'x': Coord(0, 1), \
-           'd': Coord(1, 0), \
-           'q': Coord(-1, 0), \
-           'a': Coord(-1, -1), \
-           'e': Coord(1, -1), \
-           'w': Coord(-1, 1), \
-           'c': Coord(1, 1), \
+    dir = {'z': Coord(0, -1),
+           'x': Coord(0, 1),
+           'd': Coord(1, 0),
+           'q': Coord(-1, 0),
+           'a': Coord(-1, -1),
+           'e': Coord(1, -1),
+           'w': Coord(-1, 1),
+           'c': Coord(1, 1),
            }
 
     empty = ' '  # A non walkable cell
@@ -782,27 +722,27 @@ class Map(object):
         if hero is None:
             hero = Hero()
         self.hero = hero
-        self.generateRooms(7)
-        self.reachAllRooms()
+        self.generate_rooms(7)
+        self.reach_all_rooms()
         self.put(self._rooms[0].center(), hero)
         for r in self._rooms:
             r.decorate(self)
 
-    def addRoom(self, room):
+    def add_room(self, room):
         """Adds a room in the map."""
         self._roomsToReach.append(room)
         for y in range(room.c1.y, room.c2.y + 1):
             for x in range(room.c1.x, room.c2.x + 1):
                 self._mat[y][x] = Map.ground
 
-    def findRoom(self, coord):
+    def find_room(self, coord):
         """If the coord belongs to a room, returns the room elsewhere returns None"""
         for r in self._roomsToReach:
             if coord in r:
                 return r
         return None
 
-    def intersectNone(self, room):
+    def intersect_none(self, room):
         """Tests if the room shall intersect any room already in the map."""
         for r in self._roomsToReach:
             if room.intersect(r):
@@ -813,7 +753,7 @@ class Map(object):
         """Puts a ground cell at the given coord.
             If the coord corresponds to a room, considers the room reached."""
         self._mat[coord.y][coord.x] = Map.ground
-        r = self.findRoom(coord)
+        r = self.find_room(coord)
         if r:
             self._roomsToReach.remove(r)
             self._rooms.append(r)
@@ -837,25 +777,25 @@ class Map(object):
 
         self.corridor(roomA.center(), roomB.center())
 
-    def reachAllRooms(self):
+    def reach_all_rooms(self):
         """Makes all rooms reachable.
             Start from the first room, repeats @reach until all rooms are reached."""
         self._rooms.append(self._roomsToReach.pop(0))
         while len(self._roomsToReach) > 0:
             self.reach()
 
-    def randRoom(self):
+    def rand_room(self):
         """A random room to be put on the map."""
         c1 = Coord(random.randint(0, len(self) - 3), random.randint(0, len(self) - 3))
         c2 = Coord(min(c1.x + random.randint(3, 8), len(self) - 1), min(c1.y + random.randint(3, 8), len(self) - 1))
         return Room(c1, c2)
 
-    def generateRooms(self, n):
+    def generate_rooms(self, n):
         """Generates n random rooms and adds them if non-intersecting."""
         for i in range(n):
-            r = self.randRoom()
-            if self.intersectNone(r):
-                self.addRoom(r)
+            r = self.rand_room()
+            if self.intersect_none(r):
+                self.add_room(r)
 
     def __len__(self):
         return len(self._mat)
@@ -873,22 +813,23 @@ class Map(object):
             s += '\n'
         return s
 
-    def checkCoord(self, c):
+    def check_coord(self, c):
         """Check if the coordinates c is valid in the map."""
         if not isinstance(c, Coord):
             raise TypeError('Not a Coord')
         if not c in self:
             raise IndexError('Out of map coord')
 
-    def checkElement(self, o):
+    @staticmethod
+    def check_element(o):
         """Check if o is an Element."""
         if not isinstance(o, Element):
             raise TypeError('Not a Element')
 
     def put(self, c, o):
         """Puts an element o on the cell c"""
-        self.checkCoord(c)
-        self.checkElement(o)
+        self.check_coord(c)
+        self.check_element(o)
         if self._mat[c.y][c.x] != Map.ground:
             raise ValueError('Incorrect cell')
         if o in self._elem:
@@ -898,17 +839,17 @@ class Map(object):
 
     def get(self, c):
         """Returns the object present on the cell c"""
-        self.checkCoord(c)
+        self.check_coord(c)
         return self._mat[c.y][c.x]
 
     def pos(self, o):
         """Returns the coordinates of an element in the map """
-        self.checkElement(o)
+        self.check_element(o)
         return self._elem[o]
 
     def rm(self, c):
         """Removes the element at the coordinates c"""
-        self.checkCoord(c)
+        self.check_coord(c)
         del self._elem[self._mat[c.y][c.x]]
         self._mat[c.y][c.x] = Map.ground
 
@@ -924,7 +865,7 @@ class Map(object):
             elif self.get(dest) != Map.empty and self.get(dest).meet(e) and self.get(dest) != self.hero:
                 self.rm(dest)
 
-    def moveAllMonsters(self):
+    def move_all_monsters(self):
         """Moves all monsters in the map.
             If a monster is at distance lower than 6 from the hero, the monster advances."""
         h = self.pos(self.hero)
@@ -935,106 +876,83 @@ class Map(object):
                 if self.get(c + d) in [Map.ground, self.hero]:
                     self.move(e, d)
 
-    def applyPoisonToAllMonsters(self):
+    def apply_poison_to_all_monsters(self):
 
         for e in self._elem:
             if isinstance(e, Creature) and not isinstance(e, Hero):
-                effectToAdd = Effect(name="Heal Every Monster Test", benefic=False, effectFunc=Effect.heal,
-                                     effectType="ephemere", duration=3, value=1)
-                e.addEffect(effectToAdd)
-                # print(e.__dict__["_ephemereEffects"], e.__dict__["name"])
-                # break
-                #### TO REMOVE (THE BREAK)
-
-    def applyEffectsToAllMonsters(self):
-
-        coordToDel = []
-        for e in self._elem:
-            if isinstance(e, Creature) and not isinstance(e, Hero):
-                e.applyAllEffects()
-
-                if e.__dict__["hp"] <= 0:
-                    coordToDel.append(self.pos(e))
-
-        for coord in coordToDel:
-            self.rm(coord)
+                PoisonEffect.activate(PoisonEffect(the_game(), e, 10, 1))
 
 
 class Game(object):
     """ Class representing game state """
 
     """ available equipments """
-    equipments = {0: [Equipment("gold", "o"), \
-                      Equipment("potion heal", "!", usage=lambda self, hero: hero.addEffect(
-                          Effect(name="Heal 3hp once", benefic=True, effectFunc=Effect.heal, effectType="instant",
-                                 value=3), unique=True)), \
-                      Equipment("basic bread", "§", usage=lambda self, hero: hero.addEffect(
-                          Effect(name="Max food", benefic=True, effectFunc=Effect.feed, effectType="instant",
-                                 value=hero.defaultStomachSize), unique=True)), \
-                      Equipment("hunger mushroom", "£", usage=lambda self, hero: hero.addEffect(
-                          Effect(name="Hunger", benefic=False, effectFunc=Effect.hunger, effectType="ephemere",
-                                 duration=3, value=1), unique=True)), \
-                      Equipment("poisonous mushroom", "%", usage=lambda self, hero: hero.addEffect(
-                          Effect(name="Poison", benefic=False, effectFunc=Effect.poison, effectType="ephemere",
-                                 duration=3, value=1), unique=True)), \
-                      ], \
-                  1: [Equipment("potion teleport", "!", usage=lambda self, hero: hero.addEffect(
-                      Effect(name="Teleportation", benefic=True, effectFunc=Effect.teleport, effectType="instant"),
-                      unique=True)), \
-                      ], \
-                  2: [Equipment("milk", "m", usage=lambda self, hero: hero.removeAllEffects(unique=True)), \
-                      ], \
-                  3: [Equipment("portoloin", "w", usage=lambda self, hero: hero.addEffect(
-                      Effect(name="Telportation", benefic=True, effectFunc=Effect.teleport, effectType="instant"),
-                      unique=False)), \
-                      ], \
+    equipments = {0: [Equipment("gold", "o"),
+                      Equipment("potion heal", "!",
+                                usage=lambda self, hero: HealEffect.activate(HealEffect(the_game(), hero, 1, 3))),
+                      Equipment("basic bread", "§", usage=lambda self, hero: FeedEffect.activate(
+                          FeedEffect(the_game(), hero, 1, hero.default_stomach_size))),
+                      Equipment("hunger mushroom", "£",
+                                usage=lambda self, hero: HungerEffect.activate(HungerEffect(the_game(), hero, 3, 1))),
+                      Equipment("poisonous mushroom", "%",
+                                usage=lambda self, hero: PoisonEffect.activate(PoisonEffect(the_game(), hero, 3, 1))),
+                      ],
+                  1: [Equipment("potion teleport", "!",
+                                usage=lambda self, hero: TeleportEffect.activate(TeleportEffect(the_game(), hero))),
+                      ],
+                  2: [Equipment("milk", "m", usage=lambda self, hero: Effect.clear(Effect(the_game(), hero))),
+                      ],
+                  3: [Equipment("portoloin", "w",
+                                usage=lambda self, hero: TeleportEffect.activate(TeleportEffect(the_game(), hero),
+                                                                                 False)),
+                      ],
                   }
 
     """ available weapons """
     weapons = {
-        0: [Weapon("Basic Sword", "†", weaponType=Weapon._weaponTypeList[0], usage=None, damage=3, durability=10)], \
-        1: [], \
-        2: [], \
-        }
+        0: [Weapon("Basic Sword", "†", weapon_type=Weapon._weapon_type_list[0], usage=None, damage=3, durability=10)],
+        1: [],
+        2: [],
+    }
 
     """ available monsters """
-    monsters = {0: [Creature("Goblin", hp=4, strength=1, xp=4), \
-                    Creature("Bat", hp=2, abbrv="W", strength=1, xp=2)], \
-                1: [Creature("Ork", hp=6, strength=2, xp=10), \
-                    Creature("Blob", hp=10, xp=8)], \
-                5: [Creature("Dragon", hp=20, strength=3, xp=100)], \
+    monsters = {0: [Creature("Goblin", hp=4, xp=4),
+                    Creature("Bat", hp=2, abbreviation="W", xp=2)],
+                1: [Creature("Ork", hp=6, strength=2, xp=10),
+                    Creature("Blob", hp=10, xp=8)],
+                5: [Creature("Dragon", hp=20, strength=3, xp=100)],
                 }
 
     """ available actions """
-    _actions = {'z': lambda h: theGame().floor.move(h, Coord(0, -1)), \
-                'q': lambda h: theGame().floor.move(h, Coord(-1, 0)), \
-                'x': lambda h: theGame().floor.move(h, Coord(0, 1)), \
-                'd': lambda h: theGame().floor.move(h, Coord(1, 0)), \
-                'a': lambda h: theGame().floor.move(h, Coord(-1, -1)), \
-                'e': lambda h: theGame().floor.move(h, Coord(1, -1)), \
-                'w': lambda h: theGame().floor.move(h, Coord(-1, 1)), \
-                'c': lambda h: theGame().floor.move(h, Coord(1, 1)), \
- \
-                'i': lambda h: theGame().addMessage(h.fullDescription()), \
-                'k': lambda h: h.__setattr__('hp', 0), \
-                'u': lambda h: h.use(theGame().select(h._inventory)), \
-                ' ': lambda h: None, \
-                'h': lambda hero: theGame().addMessage("Actions disponibles : " + str(list(Game._actions.keys()))), \
-                't': lambda hero: hero.deleteItem(
-                    theGame().selectItemToDel(hero._inventory) if len(hero._inventory) > 0 else False), \
-                'b': lambda hero: hero.equipWeapon(theGame().selectWeapon(hero._inventory)) if any(
-                    isinstance(elem, Weapon) for elem in hero._inventory) else theGame().addMessage(
-                    "You don't have any weapon in your inventory"), \
-                'n': lambda hero: hero.removeCurrentWeapon(), \
- \
+    _actions = {'z': lambda h: the_game().floor.move(h, Coord(0, -1)),
+                'q': lambda h: the_game().floor.move(h, Coord(-1, 0)),
+                'x': lambda h: the_game().floor.move(h, Coord(0, 1)),
+                'd': lambda h: the_game().floor.move(h, Coord(1, 0)),
+                'a': lambda h: the_game().floor.move(h, Coord(-1, -1)),
+                'e': lambda h: the_game().floor.move(h, Coord(1, -1)),
+                'w': lambda h: the_game().floor.move(h, Coord(-1, 1)),
+                'c': lambda h: the_game().floor.move(h, Coord(1, 1)),
+
+                'i': lambda h: the_game().add_message(h.full_description()),
+                'k': lambda h: h.__setattr__('hp', 0),
+                'u': lambda h: h.use(the_game().select(h._inventory)),
+                ' ': lambda h: None,
+                'h': lambda hero: the_game().add_message("Actions available : " + str(list(Game._actions.keys()))),
+                't': lambda hero: hero.delete_item(
+                    the_game().select_item_to_del(hero._inventory) if len(hero._inventory) > 0 else False),
+                'b': lambda hero: hero.equip_weapon(the_game().select_weapon(hero._inventory)) if any(
+                    isinstance(elem, Weapon) for elem in hero._inventory) else the_game().add_message(
+                    "You don't have any weapon in your inventory"),
+                'n': lambda hero: hero.remove_current_weapon(),
+
                 }
 
-    def __init__(self, level=1, _message=None, hero=None, floor=None, numberOfRound=0):
+    def __init__(self, level=1, _message=None, hero=None, floor=None, number_of_round=0):
 
         self.level = level
         self.activeEffects = []
 
-        if hero == None:
+        if hero is None:
             hero = Hero()
 
         self.hero = hero
@@ -1049,83 +967,90 @@ class Game(object):
         else:
             self.floor = None
 
-        self.numberOfRound = numberOfRound
+        self.numberOfRound = number_of_round
 
-    def buildFloor(self):
+    def build_floor(self):
         """Creates a map for the current floor."""
         self.floor = Map(hero=self.hero)
 
-    def addMessage(self, msg):
+    def add_message(self, msg):
         """Adds a message in the message list."""
         self._message.append(msg)
 
-    def readMessages(self):
+    def read_messages(self):
         """Returns the message list and clears it."""
         s = ''
         for m in self._message:
-            s += m
+            s += m + ".\n"
         self._message.clear()
         return s
 
-    def randElement(self, collect):
+    def rand_element(self, collect):
         """Returns a clone of random element from a collection using exponential random law."""
         x = random.expovariate(1 / self.level)
         for k in collect.keys():
             if k <= x:
-                l = collect[k]
-        return copy.copy(random.choice(l))
+                element_list = collect[k]
+        return copy.copy(random.choice(element_list))
 
-    def randEquipment(self):
+    def rand_equipment(self):
         """Returns a random equipment."""
-        return self.randElement(Game.equipments)
+        return self.rand_element(Game.equipments)
 
-    def randMonster(self):
+    def rand_monster(self):
         """Returns a random monster."""
-        return self.randElement(Game.monsters)
+        return self.rand_element(Game.monsters)
 
-    def select(self, l):
+    @staticmethod
+    def select(items_list: list) -> Element:
 
-        print("Choose an item> " + str([str(l.index(e)) + ": " + e.name for e in l]))
-
-        c = getch()
-
-        if c.isdigit() and int(c) in range(len(l)):
-            return l[int(c)]
-
-    def selectItemToDel(self, l):
-
-        print("Choose an item to delete> " + str([str(l.index(e)) + ": " + e.name for e in l]))
+        print("Choose an item> " + str([str(items_list.index(e)) + ": " + e.name for e in items_list]))
 
         c = getch()
 
-        if c.isdigit() and int(c) in range(len(l)) and len(l) != 0:
-            return l[int(c)]
+        if c.isdigit() and int(c) in range(len(items_list)):
+            return items_list[int(c)]
 
-    def selectWeapon(self, l):
+    @staticmethod
+    def select_item_to_del(items_list: list) -> Element:
 
-        listWeapon = [e for e in l if isinstance(e, Weapon)]
-
-        print("Choose a weapon> " + str([str(listWeapon.index(e)) + ": " + e.name for e in listWeapon]))
+        print("Choose an item to delete> " + str([str(items_list.index(e)) + ": " + e.name for e in items_list]))
 
         c = getch()
 
-        if c.isdigit() and int(c) in range(len(listWeapon)) and len(listWeapon) != 0:
-            return listWeapon[int(c)]
+        if c.isdigit() and int(c) in range(len(items_list)) and len(items_list) != 0:
+            return items_list[int(c)]
+
+    @staticmethod
+    def select_weapon(element_list):
+
+        list_weapon = [e for e in element_list if isinstance(e, Weapon)]
+
+        print("Choose a weapon> " + str([str(list_weapon.index(e)) + ": " + e.name for e in list_weapon]))
+
+        c = getch()
+
+        if c.isdigit() and int(c) in range(len(list_weapon)) and len(list_weapon) != 0:
+            return list_weapon[int(c)]
 
     def play(self):
 
         """Main game loop"""
 
-        self.buildFloor()
-        # self.hero.weaponSlot.append(theGame().weapons[0][0]) #BASIC SWORD
-        # self.hero.addEffect(Effect(name="STRENGHT BOOST", benefic=True, effectFunc=Effect.giveStrength, effectType="constant", value=10))
-        # self.hero.addEffect(Effect(name="Poison", benefic=False, effectFunc=Effect.poison, effectType="ephemere", duration=10, value=1), unique=True)
-        # self.hero.take(theGame().equipments[2][0]) #MILK
-        # self.hero.take(theGame().equipments[0][1]) #HEAL POTION
+        self.build_floor()
 
-        # PoisonEffect.activate(PoisonEffect(self, self.hero, 3, 1))
-        StrengthEffect.activate(StrengthEffect(self, self.hero, 10, 5))
+        # self.hero.weaponSlot.append(the_game().weapons[0][0]) #BASIC SWORD
+
+        # PoisonEffect.activate(PoisonEffect(self, self.hero, 1, 1), False)
+
+        # StrengthEffect.activate(StrengthEffect(self, self.hero, 10, 5))
+
         # HealEffect.activate(HealEffect(self, self.hero, 5, 1))
+        # PoisonEffect.activate(PoisonEffect(self, self.hero, 5, 2))
+
+        # FeedEffect.activate(FeedEffect(self, self.hero, 5, 1))
+        # HungerEffect.activate(HungerEffect(self, self.hero, 5, 2))
+        # self.floor.apply_poison_to_all_monsters()
 
         print("--- Welcome Hero! ---")
 
@@ -1134,13 +1059,11 @@ class Game(object):
             print()
             print(self.floor)
             print(self.hero.description())
-            print(self.readMessages())
+            print(self.read_messages())
 
-            self.hero.checkInventorySize()
+            self.hero.check_inventory_size()
 
-            print(self.readMessages())
-
-            # self.floor.applyPoisonToAllMonsters()
+            print(self.read_messages())
 
             c = getch()
             if c in Game._actions:
@@ -1148,36 +1071,27 @@ class Game(object):
 
                 if c in {"a", "z", "e", "q", "d", "w", "x", "c"}:
 
-                    self.floor.moveAllMonsters()
+                    self.floor.move_all_monsters()
                     self.numberOfRound += 1
+                    self.add_message(f"Number of round : {self.numberOfRound}")
 
-                    if self.numberOfRound % 20 == 0 and self.hero.__dict__["stomach"] > 0:
-                        self.hero.__dict__["stomach"] -= 1
+                    if self.numberOfRound % 20 == 0 and self.hero.stomach > 0:
+                        self.hero.stomach -= 1
 
-                    self.hero.verifyStomach()
+                    self.hero.verify_stomach()
 
-                    for effect in self.activeEffects:
-
-                        condition1 = isinstance(effect, EphemereEffect)
-                        condition2 = isinstance(effect, ConstantEffect) and not effect.hasBeenActivated
-
-                        if condition1 or condition2:
-                            effect.update()
+                    if len(self.activeEffects) != 0:
+                        i = 0
+                        while i < len(self.activeEffects):
+                            if not self.activeEffects[i].update():
+                                i += 1
 
         print("--- Game Over ---")
 
 
-def theGame(game=Game()):
+def the_game(game=Game()):
     return game
 
 
 getch = _find_getch()
-theGame().play()
-
-
-
-
-
-
-
-
+the_game().play()
