@@ -1891,6 +1891,8 @@ class Game(object):
         # GRAPHICS
         self.gv = GraphicVariables(self.hero)
 
+        self.paused = False
+
     def build_floor(self):
         """Creates a map for the current floor."""
 
@@ -2005,6 +2007,9 @@ class Game(object):
                     self.gv.play_next_song()
 
                 elif event.type == pygame.KEYDOWN:
+                    # for key in self.input_dictionary:
+                    #     if event.key == exec(f"pygame.K_{key}"):
+                    #         self.input_dictionary[key] = True
 
                     if event.key == pygame.K_ESCAPE:
                         self.gv.menuOn = not self.gv.menuOn
@@ -2017,7 +2022,7 @@ class Game(object):
                         self.gv.choose_in_menu(event)
 
                     if self.gv.inventoryOn:
-                        self.gv.chooseInInventory(event)
+                        self.gv.choose_in_inventory(event)
 
                 if not self.gv.inventoryOn:
                     self.gv.player_plays(event)

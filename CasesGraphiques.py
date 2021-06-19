@@ -10,34 +10,76 @@ def get_image(name):
     sizeFactor = round(16 * 1.25)
     # print(dest+name)
     image = pygame.image.load(dest + name)
+    i += 1
+    print('executing loading', i)
 
     return pygame.transform.scale(image, (sizeFactor, sizeFactor))
 
+
+ground_cell_paths = ["Background/FloorTopLeft.png",
+                     "Background/FloorTop.png",
+                     "Background/FloorTopRight.png",
+
+                     "Background/FloorLeft.png",
+                     "Background/Floor.png",
+                     "Background/FloorRight.png",
+
+                     "Background/FloorBotLeft.png",
+                     "Background/FloorBot.png",
+                     "Background/FloorBotRight.png",
+
+                     "Background/FloorCorridorVert.png",
+                     "Background/FloorCorridorHoriz.png"]
+ground_cell_surfaces = [get_image(img_path) for img_path in ground_cell_paths]
 
 
 def cases_ground(key, floor):
     e = floor.empty
     g = floor.ground
     cases_ground = {
-        (e, g, e, g): getImage("Background/FloorTopLeft.png"),
-        (e, g, g, g): getImage("Background/FloorTop.png"),
-        (e, g, g, e): getImage("Background/FloorTopRight.png"),
+        (e, g, e, g): ground_cell_surfaces[0],
+        (e, g, g, g): ground_cell_surfaces[1],
+        (e, g, g, e): ground_cell_surfaces[2],
 
-        (g, g, e, g): getImage("Background/FloorLeft.png"),
-        (g, g, g, g): getImage("Background/Floor.png"),
-        (g, g, g, e): getImage("Background/FloorRight.png"),
+        (g, g, e, g): ground_cell_surfaces[3],
+        (g, g, g, g): ground_cell_surfaces[4],
+        (g, g, g, e): ground_cell_surfaces[5],
 
-        (g, e, e, g): getImage("Background/FloorBotLeft.png"),
-        (g, e, g, g): getImage("Background/FloorBot.png"),
-        (g, e, g, e): getImage("Background/FloorBotRight.png"),
+        (g, e, e, g): ground_cell_surfaces[6],
+        (g, e, g, g): ground_cell_surfaces[7],
+        (g, e, g, e): ground_cell_surfaces[8],
 
-        (g, g, e, e): getImage("Background/FloorCorridorVert.png"),
-        (e, e, g, g): getImage("Background/FloorCorridorHoriz.png")
+        (g, g, e, e): ground_cell_surfaces[9],
+        (e, e, g, g): ground_cell_surfaces[10]
     }
     if key not in cases_ground:
         return False
     return cases_ground[key]
 
+
+empty_cells_paths = [
+    "Background/WallHoriz.png",
+    "Background/WallHoriz.png",
+    "Background/WallHoriz.png",
+
+    "Background/WallTopLeft.png",
+    "Background/WallTopRight.png",
+
+    "Background/WallBotLeft.png",
+    "Background/WallBotRight.png",
+
+    "Background/WallBotLeftUniq.png",
+    "Background/WallBotRightUniq.png",
+
+    "Background/WallVert.png",
+    "Background/WallVert.png",
+    "Background/WallVert.png",
+    "Background/WallVert.png",
+
+    "Background/WallDoubleTop.png",
+    "Background/WallDoubleTop.png"
+]
+empty_cells_surfaces = [get_image(img_path) for img_path in empty_cells_paths]
 
 
 def cases_empty(key, floor):
@@ -68,6 +110,49 @@ def cases_empty(key, floor):
     if key not in empty_cells:
         return False
     return empty_cells[key]
+
+
+empty_vertex_cells_paths = [
+    "Background/PitWater.png",
+    "Background/Void.png",
+
+    "Background/WallTopRight.png",
+    "Background/WallTopLeft.png",
+    "Background/WallBotLeft.png",
+    "Background/WallBotRight.png",
+
+    "Background/WallTripleBot.png",
+    "Background/WallTripleBot.png",
+    "Background/WallTripleBot.png",
+    "Background/WallTripleBot.png",
+
+    "Background/WallTripleLeft.png",
+    "Background/WallTripleLeft.png",
+    "Background/WallTripleLeft.png",
+    "Background/WallTripleLeft.png",
+
+    "Background/WallTripleRight.png",
+    "Background/WallTripleRight.png",
+    "Background/WallTripleRight.png",
+    "Background/WallTripleRight.png",
+
+    "Background/WallTripleTop.png",
+    "Background/WallTripleTop.png",
+    "Background/WallTripleTop.png",
+    "Background/WallTripleTop.png",
+
+    "Background/WallQuadruple.png",
+    "Background/WallQuadruple.png",
+    "Background/WallQuadruple.png",
+    "Background/WallQuadruple.png",
+    "Background/WallQuadruple.png",
+
+    "Background/WallQuadruple.png",
+    "Background/WallQuadruple.png"
+
+]
+
+empty_vertex_cells_surfaces = [get_image(img_path) for img_path in empty_vertex_cells_paths]
 
 
 def cases_empty_vertex(key, floor):
