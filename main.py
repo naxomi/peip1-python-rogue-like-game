@@ -5,7 +5,7 @@ import CasesGraphiques as CG
 import pygame
 
 
-# random.seed(2)
+random.seed(2)
 
 
 def _find_getch():
