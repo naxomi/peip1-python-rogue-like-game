@@ -1,7 +1,11 @@
 import pygame
 
+i = 0
 
-def getImage(name):
+
+# TODO : Rendre le loading plus rapide en ne loadant qu'une seule fois
+def get_image(name):
+    global i
     dest = "Images/Elements/"
     sizeFactor = round(16 * 1.25)
     # print(dest+name)
@@ -10,7 +14,8 @@ def getImage(name):
     return pygame.transform.scale(image, (sizeFactor, sizeFactor))
 
 
-def casesGround(key, floor):
+
+def cases_ground(key, floor):
     e = floor.empty
     g = floor.ground
     cases_ground = {
@@ -34,84 +39,85 @@ def casesGround(key, floor):
     return cases_ground[key]
 
 
-def casesEmpty(key, floor):
+
+def cases_empty(key, floor):
     e = floor.empty
     g = floor.ground
-    cases_empty = {
-        (g, e, e, e): getImage("Background/WallHoriz.png"),
-        (e, g, e, e): getImage("Background/WallHoriz.png"),
-        (g, g, e, e): getImage("Background/WallHoriz.png"),
+    empty_cells = {
+        (g, e, e, e): empty_cells_surfaces[0],
+        (e, g, e, e): empty_cells_surfaces[1],
+        (g, g, e, e): empty_cells_surfaces[2],
 
-        (g, e, g, e): getImage("Background/WallTopLeft.png"),
-        (g, e, e, g): getImage("Background/WallTopRight.png"),
+        (g, e, g, e): empty_cells_surfaces[3],
+        (g, e, e, g): empty_cells_surfaces[4],
 
-        (e, g, g, e): getImage("Background/WallBotLeft.png"),
-        (e, g, e, g): getImage("Background/WallBotRight.png"),
+        (e, g, g, e): empty_cells_surfaces[5],
+        (e, g, e, g): empty_cells_surfaces[6],
 
-        (g, g, g, e): getImage("Background/WallBotLeftUniq.png"),
-        (g, g, e, g): getImage("Background/WallBotRightUniq.png"),
+        (g, g, g, e): empty_cells_surfaces[7],
+        (g, g, e, g): empty_cells_surfaces[8],
 
-        (e, e, e, g): getImage("Background/WallVert.png"),
-        (e, e, g, e): getImage("Background/WallVert.png"),
-        (e, e, g, g): getImage("Background/WallVert.png"),
-        (g, e, g, g): getImage("Background/WallVert.png"),
+        (e, e, e, g): empty_cells_surfaces[9],
+        (e, e, g, e): empty_cells_surfaces[10],
+        (e, e, g, g): empty_cells_surfaces[11],
+        (g, e, g, g): empty_cells_surfaces[12],
 
-        (e, g, g, g): getImage("Background/WallDoubleTop.png"),
-        (g, g, g, g): getImage("Background/WallDoubleTop.png")
+        (e, g, g, g): empty_cells_surfaces[13],
+        (g, g, g, g): empty_cells_surfaces[14]
     }
-    if key not in cases_empty:
+    if key not in empty_cells:
         return False
-    return cases_empty[key]
+    return empty_cells[key]
 
 
-def casesEmptyVertex(key, floor):
+def cases_empty_vertex(key, floor):
     e = floor.empty
     g = floor.ground
-    cases_empty_vertex = {
-        0: getImage("Background/PitWater.png"),
-        (e, e, e, e): getImage("Background/Void.png"),
+    cells_empty_vertex = {
+        0: empty_vertex_cells_surfaces[0],
+        (e, e, e, e): empty_vertex_cells_surfaces[1],
 
-        (e, e, e, g): getImage("Background/WallTopRight.png"),
-        (e, e, g, e): getImage("Background/WallTopLeft.png"),
-        (e, g, e, e): getImage("Background/WallBotLeft.png"),
-        (g, e, e, e): getImage("Background/WallBotRight.png"),
+        (e, e, e, g): empty_vertex_cells_surfaces[2],
+        (e, e, g, e): empty_vertex_cells_surfaces[3],
+        (e, g, e, e): empty_vertex_cells_surfaces[4],
+        (g, e, e, e): empty_vertex_cells_surfaces[5],
 
-        (g, e, g, e, e, g, g, g): getImage("Background/WallTripleBot.png"),
-        (e, e, g, e, e, g, g, g): getImage("Background/WallTripleBot.png"),
-        (g, e, e, e, e, g, g, g): getImage("Background/WallTripleBot.png"),
-        (g, e, g, e, e, e, e, e): getImage("Background/WallTripleBot.png"),
+        (g, e, g, e, e, g, g, g): empty_vertex_cells_surfaces[6],
+        (e, e, g, e, e, g, g, g): empty_vertex_cells_surfaces[7],
+        (g, e, e, e, e, g, g, g): empty_vertex_cells_surfaces[8],
+        (g, e, g, e, e, e, e, e): empty_vertex_cells_surfaces[9],
 
-        (g, e, g, g, e, g, e, g): getImage("Background/WallTripleLeft.png"),
-        (g, e, g, g, e, g, e, e): getImage("Background/WallTripleLeft.png"),
-        (g, e, e, g, e, g, e, g): getImage("Background/WallTripleLeft.png"),
-        (e, e, g, e, e, e, e, g): getImage("Background/WallTripleLeft.png"),
+        (g, e, g, g, e, g, e, g): empty_vertex_cells_surfaces[10],
+        (g, e, g, g, e, g, e, e): empty_vertex_cells_surfaces[11],
+        (g, e, e, g, e, g, e, g): empty_vertex_cells_surfaces[12],
+        (e, e, g, e, e, e, e, g): empty_vertex_cells_surfaces[13],
 
-        (g, e, g, e, g, g, e, g): getImage("Background/WallTripleRight.png"),
-        (g, e, g, e, g, e, e, g): getImage("Background/WallTripleRight.png"),
-        (e, e, g, e, g, g, e, g): getImage("Background/WallTripleRight.png"),
-        (g, e, e, e, e, g, e, e): getImage("Background/WallTripleRight.png"),
+        (g, e, g, e, g, g, e, g): empty_vertex_cells_surfaces[14],
+        (g, e, g, e, g, e, e, g): empty_vertex_cells_surfaces[15],
+        (e, e, g, e, g, g, e, g): empty_vertex_cells_surfaces[16],
+        (g, e, e, e, e, g, e, e): empty_vertex_cells_surfaces[17],
 
-        (g, g, g, e, e, g, e, g): getImage("Background/WallTripleTop.png"),
-        (g, g, g, e, e, e, e, g): getImage("Background/WallTripleTop.png"),
-        (g, g, g, e, e, g, e, e): getImage("Background/WallTripleTop.png"),
-        (e, e, e, e, e, g, e, g): getImage("Background/WallTripleTop.png"),
+        (g, g, g, e, e, g, e, g): empty_vertex_cells_surfaces[18],
+        (g, g, g, e, e, e, e, g): empty_vertex_cells_surfaces[19],
+        (g, g, g, e, e, g, e, e): empty_vertex_cells_surfaces[20],
+        (e, e, e, e, e, g, e, g): empty_vertex_cells_surfaces[21],
 
-        (g, e, g, e, e, g, e, g): getImage("Background/WallQuadruple.png"),
-        (g, e, e, e, e, g, e, g): getImage("Background/WallQuadruple.png"),
-        (e, e, g, e, e, g, e, g): getImage("Background/WallQuadruple.png"),
-        (g, e, g, e, e, e, e, g): getImage("Background/WallQuadruple.png"),
-        (g, e, g, e, e, g, e, e): getImage("Background/WallQuadruple.png"),
+        (g, e, g, e, e, g, e, g): empty_vertex_cells_surfaces[22],
+        (g, e, e, e, e, g, e, g): empty_vertex_cells_surfaces[23],
+        (e, e, g, e, e, g, e, g): empty_vertex_cells_surfaces[24],
+        (g, e, g, e, e, e, e, g): empty_vertex_cells_surfaces[25],
+        (g, e, g, e, e, g, e, e): empty_vertex_cells_surfaces[26],
 
-        (g, e, e, e, e, e, e, g): getImage("Background/WallQuadruple.png"),
-        (e, e, g, e, e, g, e, e): getImage("Background/WallQuadruple.png")
+        (g, e, e, e, e, e, e, g): empty_vertex_cells_surfaces[27],
+        (e, e, g, e, e, g, e, e): empty_vertex_cells_surfaces[28]
     }
-    if key not in cases_empty_vertex:
+    if key not in cells_empty_vertex:
         return False
 
-    return cases_empty_vertex[key]
+    return cells_empty_vertex[key]
 
 
-def generateGraphicMap(floor):
+def generate_graphic_map(floor):
     m = floor._mat
     e = floor.empty
     g = floor.ground
@@ -129,84 +135,84 @@ def generateGraphicMap(floor):
                 elem = e
 
             try:
-                haut = floor.get_without_coord(x, y - 1)
+                up = floor.get_without_coord(x, y - 1)
             except IndexError:
-                haut = e
+                up = e
 
             try:
-                bas = floor.get_without_coord(x, y + 1)
+                down = floor.get_without_coord(x, y + 1)
             except IndexError:
-                bas = e
+                down = e
 
             try:
-                gauche = floor.get_without_coord(x - 1, y)
+                left = floor.get_without_coord(x - 1, y)
             except IndexError:
-                gauche = e
+                left = e
 
             try:
-                droite = floor.get_without_coord(x + 1, y)
+                right = floor.get_without_coord(x + 1, y)
             except IndexError:
-                droite = e
+                right = e
 
             if elem == g:
-                floor.graphicMap[y][x] = [casesGround((haut, bas, gauche, droite), floor), False]
+                floor.graphicMap[y][x] = [cases_ground((up, down, left, right), floor), False]
 
             else:
 
                 try:
-                    hautgauche = floor.get_without_coord(x - 1, y - 1, )
+                    up_left = floor.get_without_coord(x - 1, y - 1, )
                 except IndexError:
-                    hautgauche = e
+                    up_left = e
 
                 try:
-                    hautdroite = floor.get_without_coord(x + 1, y - 1)
+                    up_right = floor.get_without_coord(x + 1, y - 1)
                 except IndexError:
-                    hautdroite = e
+                    up_right = e
 
                 try:
-                    basgauche = floor.get_without_coord(x - 1, y + 1)
+                    down_left = floor.get_without_coord(x - 1, y + 1)
                 except IndexError:
-                    basgauche = e
+                    down_left = e
 
                 try:
-                    basdroite = floor.get_without_coord(x + 1, y + 1)
+                    down_right = floor.get_without_coord(x + 1, y + 1)
                 except IndexError:
-                    basdroite = e
+                    down_right = e
 
-                casesAutour = (hautgauche, haut, hautdroite, gauche, droite, basgauche, bas, basdroite)
+                cells_around = (up_left, up, up_right, left, right, down_left, down, down_right)
 
-                if casesEmptyVertex(casesAutour, floor):
-                    floor.graphicMap[y][x] = [casesEmptyVertex(casesAutour, floor), False]
+                if cases_empty_vertex(cells_around, floor):
+                    floor.graphicMap[y][x] = [cases_empty_vertex(cells_around, floor), False]
 
-                elif casesEmpty((haut, bas, gauche, droite), floor):
-                    floor.graphicMap[y][x] = [casesEmpty((haut, bas, gauche, droite), floor), False]
+                elif cases_empty((up, down, left, right), floor):
+                    floor.graphicMap[y][x] = [cases_empty((up, down, left, right), floor), False]
 
-                elif casesEmptyVertex((hautgauche, hautdroite, basdroite, basgauche), floor):
-                    floor.graphicMap[y][x] = [casesEmptyVertex((hautgauche, hautdroite, basdroite, basgauche), floor),
+                elif cases_empty_vertex((up_left, up_right, down_right, down_left), floor):
+                    floor.graphicMap[y][x] = [cases_empty_vertex((up_left, up_right, down_right, down_left), floor),
                                               False]
 
                 else:
-                    floor.graphicMap[y][x] = [casesEmptyVertex(0, floor), False]
+                    floor.graphicMap[y][x] = [cases_empty_vertex(0, floor), False]
 
 
-def getHeroImage(key):
-    return [getImage("HeroCostumes/" + key + "/row-" + str(j) + "-col-" + str(i) + ".png") for j in range(1, 5) for i
+def get_hero_image(key):
+    return [get_image("HeroCostumes/" + key + "/row-" + str(j) + "-col-" + str(i) + ".png") for j in range(1, 5) for i
             in range(1, 5)]
 
 
-def getMonsterImage(key):
+def get_monster_image(key):
     if key != "Hero":
-        return [getImage("Monsters/" + key + "-" + str(i) + ".png") for i in range(2)]
+        return [get_image("Monsters/" + key + "-" + str(i) + ".png") for i in range(2)]
 
 
-def getItemImage(key):
-    return getImage("Items/" + key + ".png")
+def get_item_image(key):
+    return get_image("Items/" + key + ".png")
 
 
-def getRoomObjectImage(key):
+def get_room_object_image(key):
     dest = "Images/Elements/RoomObjects/"
-    sizeFactor = round(16 * 1.25)
+    size_factor = round(16 * 1.25)
     image = pygame.image.load(dest + key + ".png")
-    x = image.get_width() * sizeFactor / 16
-    y = image.get_height() * sizeFactor / 16
+    x = image.get_width() * size_factor / 16
+    y = image.get_height() * size_factor / 16
     return pygame.transform.scale(image, (int(x), int(y)))

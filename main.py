@@ -5,8 +5,7 @@ import CasesGraphiques as CG
 import pygame
 
 
-random.seed(2)
-
+# random.seed(2)
 
 def _find_getch():
     """Single char input, only works only on mac/linux/windows OS terminals"""
@@ -43,10 +42,10 @@ def opp(x):
     return -x + 1
 
 
-def clearList(liste):
-    for i in range(len(liste)):
-        for j in range(len(liste)):
-            liste[i][j] = None
+def clear_list(list_to_clear):
+    for i in range(len(list_to_clear)):
+        for j in range(len(list_to_clear)):
+            list_to_clear[i][j] = None
 
 
 class Coord(object):
@@ -78,15 +77,15 @@ class Coord(object):
         d = self - other
         return math.sqrt(d.x * d.x + d.y * d.y)
 
-    def emptyAround(self, map):
-        # Renvoie True si les coordonnées autour correspondent avec la liste demandée
+    def empty_around(self, map):
+        # Return True if the coordinates around are corresponding
         res = True
         for y in range(-1, 2):
             for x in range(-1, 2):
                 res = res and (map.get(self + Coord(x, y)) == Map.ground or map.get(self + Coord(x, y)) == map.hero)
         return res
 
-    def getEmptyCoordAround(self, map):
+    def get_empty_coord_around(self, map):
         l = []
         o = map.get(self)
         for i in range(-1, 2):
@@ -96,8 +95,8 @@ class Coord(object):
                     l.append(self + way)
         return random.choice(l)
 
-    def getTupple(self):
-        return (self.x, self.y)
+    def get_tuple(self):
+        return self.x, self.y
 
 
 class Element(object):
@@ -136,7 +135,7 @@ class RoomObject(Element):
 
         for i in range(2):
             try:
-                self.graphicOutput.append(CG.getRoomObjectImage(self.name + '-' + str(i)))
+                self.graphicOutput.append(CG.get_room_object_image(self.name + '-' + str(i)))
             except:
                 print("Not image for:", self.name + '-' + str(i))
                 pass
@@ -155,7 +154,7 @@ class RoomObject(Element):
         return ret
 
     @staticmethod
-    def monterEtage():
+    def go_upstairs():
         g = the_game()
         if g.actualFloor + 1 < len(g.floorList):
             g.floor.rm(g.floor.pos(g.hero))
@@ -164,17 +163,17 @@ class RoomObject(Element):
             g.floor = g.gv.floor = g.floorList[g.actualFloor]
             g.add_message('You are now in stage ' + str(g.actualFloor + 1) + '/' + str(len(g.floorList)))
 
-            stairCoord = g.floor.pos(g._roomObjects['downstair'])
-            newCoord = stairCoord.getEmptyCoordAround(g.floor)
+            stair_coord = g.floor.pos(g._room_objects['downstair'])
+            new_coord = stair_coord.get_empty_coord_around(g.floor)
 
-            g.floor.put(newCoord, g.hero)
-            g.hero.x = newCoord.x
-            g.hero.y = newCoord.y
+            g.floor.put(new_coord, g.hero)
+            g.hero.x = new_coord.x
+            g.hero.y = new_coord.y
             return True
         return False
 
     @staticmethod
-    def descendreEtage():
+    def go_downstairs():
         g = the_game()
         if g.actualFloor - 1 >= 0:
             g.floor.rm(g.floor.pos(g.hero))
@@ -183,23 +182,23 @@ class RoomObject(Element):
             g.floor = g.gv.floor = g.floorList[g.actualFloor]
             g.add_message('You are now in stage ' + str(g.actualFloor + 1) + '/' + str(len(g.floorList)))
 
-            stairCoord = g.floor.pos(g._roomObjects['upstair'])
-            newCoord = stairCoord.getEmptyCoordAround(g.floor)
+            stair_coord = g.floor.pos(g._room_objects['upstair'])
+            new_coord = stair_coord.get_empty_coord_around(g.floor)
 
-            g.floor.put(newCoord, g.hero)
-            g.hero.x = newCoord.x
-            g.hero.y = newCoord.y
+            g.floor.put(new_coord, g.hero)
+            g.hero.x = new_coord.x
+            g.hero.y = new_coord.y
             return True
         return False
 
     @staticmethod
-    def meetMarchand():
+    def meet_trader():
         l = []
         for i in range(2):
             l.append(the_game().rand_element(Game.equipments))
         l.append(the_game().rand_element(Game._weapons))
 
-        the_game().gv.drawMarchand(l)
+        the_game().gv.draw_marchand(l)
 
 
 class Creature(Element):
@@ -230,7 +229,7 @@ class Creature(Element):
         self._inventory = []
 
         # Graphics
-        self.graphicOutput = CG.getMonsterImage(self.name)
+        self.graphicOutput = CG.get_monster_image(self.name)
 
     def description(self) -> str:
         """Description of the creature"""
@@ -335,7 +334,7 @@ class Hero(Creature):
         self.default_stomach_size = stomach
 
         # GRAPHICS
-        images = CG.getHeroImage("Template")
+        images = CG.get_hero_image("Template")
 
         self.graphicOutput = images[0]
         self.animationUDLR = {(0, -1): images[12:16],  # cannot put Coord since it's not hashable
@@ -353,7 +352,7 @@ class Hero(Creature):
                               }
 
         self.state = 0
-        self.moovingUDLR = [False, False, False, False]
+        self.moving_UDLR = [False, False, False, False]
 
         self.x = 0
         self.y = 0
@@ -410,9 +409,9 @@ class Hero(Creature):
                 except:
                     print("Wrong value entered.")
 
-    def checkInvSize(self):
+    def check_inv_size(self):
         if len(self._inventory) > Hero.defaultInventorySize:
-            the_game().add_message("Inventaire complet.\nVeuillez supprimer un élément.")
+            the_game().add_message("Inventory full.\nDelete an item to gain space")
             return False
         return True
 
@@ -474,7 +473,7 @@ class Hero(Creature):
 
     def buy(self, o):
         if isinstance(o, Equipment):
-            if self.checkInvSize():
+            if self.check_inv_size():
                 if self.gold >= o.price:
                     self.gold -= o.price
                     self.take(o)
@@ -846,7 +845,7 @@ class Equipment(Element):
         self.price = price
 
         # GRAPHICS
-        image = CG.getItemImage(self.name)
+        image = CG.get_item_image(self.name)
         self.graphicOutput = [pygame.transform.scale(image, (16, 16)), pygame.transform.scale(image, (32, 32))]
 
     def meet(self, hero):
@@ -901,16 +900,6 @@ class Weapon(Equipment):
         return
 
 
-class Projectile(object):
-    "Class to define the behaviour of projectiles"
-
-
-class Amulet(Equipment):
-
-    def __init__(self, name, abbreviation="", usage=None, durability=None):
-        Equipment.__init__(self, name, abbreviation, usage, durability)
-
-
 class Room(object):
     """A rectangular room in the map"""
 
@@ -957,7 +946,7 @@ class Room(object):
         for y in range(self.c1.y + 1, self.c2.y):
             for x in range(self.c1.x + 1, self.c2.x):
                 c = Coord(x, y)
-                if c.emptyAround(map) and c != self.center():
+                if c.empty_around(map) and c != self.center():
                     l.append(c)
         if len(l) == 0:
             return None
@@ -1010,7 +999,7 @@ class Map(object):
         # Graphics
 
         self.graphicMap = []
-        CG.generateGraphicMap(self)
+        CG.generate_graphic_map(self)
         self.graphicElements = []
         for i in range(len(self.graphicMap)):
             l = []
@@ -1085,13 +1074,13 @@ class Map(object):
             self.reach()
 
     def putRoomObjects(self):
-        for key in Game._roomObjects:
+        for key in Game._room_objects:
             if key == "downstair" and self.floorNumber > 0:
                 r = random.choice(self._rooms)
-                r.specialObjects.append(Game._roomObjects[key])
-            if key == "upstair" and self.floorNumber + 1 < the_game().nbFloors:
+                r.specialObjects.append(Game._room_objects[key])
+            if key == "upstair" and self.floorNumber + 1 < the_game().nb_floors:
                 r = random.choice(self._rooms)
-                r.specialObjects.append(Game._roomObjects[key])
+                r.specialObjects.append(Game._room_objects[key])
 
     def rand_room(self):
         """A random room to be put on the map."""
@@ -1207,8 +1196,8 @@ class Map(object):
         for i in range(-1, 2):
             for j in range(-1, 2):
                 way = Coord(i, j)
-                inMap = 0 <= c1.x + way.x < len(self._mat) and 0 <= c1.y + way.y < len(self._mat)
-                if inMap and (c1 + way).distance(c2) < (c1 + wayFinale).distance(c2) and (self.get(
+                in_map = 0 <= c1.x + way.x < len(self._mat) and 0 <= c1.y + way.y < len(self._mat)
+                if in_map and (c1 + way).distance(c2) < (c1 + wayFinale).distance(c2) and (self.get(
                         c1 + way) == self.ground or self.get(c1 + way) == self.hero):
                     wayFinale = way
         return wayFinale
@@ -1226,7 +1215,7 @@ class Map(object):
                     self.move(e, d)
 
     def updateElements(self, state):
-        clearList(self.graphicElements)
+        clear_list(self.graphicElements)
         for y in range(len(self._mat)):
             for x in range(len(self._mat)):
 
@@ -1244,7 +1233,7 @@ class Map(object):
                             self.graphicElements[y][x] = elem.graphicOutput[state]
                         else:
                             self.graphicElements[y][x] = elem.graphicOutput[0]
-        the_game().gv.updateBrouillard(self)
+        the_game().gv.update_brouillard(self)
 
 
 # TODO : Jaime wants to change something (qwerty / azerty)
@@ -1283,7 +1272,7 @@ class GraphicVariables(object):
                             ("Choose Character", True), ("Exit Game", True)]
         self.optionsHero = [("Characters", False), ("", False), ("Template", True), ("Rogue", True), ("Engineer", True),
                             ("Warrior", True), ("Mage", True), ("Paladin", True)]
-        self.optionsConstrols = [
+        self.options_controls = [
             ("i : open inventory", False),
             ("k : suicide", False),
             ("t : delete item", False),
@@ -1296,41 +1285,41 @@ class GraphicVariables(object):
         # Menu
         self.menuOn = True
         self.inventoryOn = False
-        self.listeMenu = self.optionsMenuStart
-        self.couleurMenu = (140, 140, 150)
+        self.list_menu = self.optionsMenuStart
+        self.colour_menu = (140, 140, 150)
 
         # Game Surfaces
         self.explosion = []
         for i in range(6):
-            image = CG.getImage("Animations/explosion-" + str(i) + ".png")
+            image = CG.get_image("Animations/explosion-" + str(i) + ".png")
             self.explosion.append(pygame.transform.scale(image, (40, 40)))
 
         self.hearts = []
         for i in range(5):
-            image1 = CG.getImage("GUI/heart" + str(i) + "-0.png")
-            image2 = CG.getImage("GUI/heart" + str(i) + "-1.png")
+            image1 = CG.get_image("GUI/heart" + str(i) + "-0.png")
+            image2 = CG.get_image("GUI/heart" + str(i) + "-1.png")
             self.hearts.append([image1, image2])
 
-        self.blackhearts = []
+        self.black_hearts = []
         for i in range(5):
-            image1 = CG.getImage("GUI/blackheart" + str(i) + "-0.png")
-            image2 = CG.getImage("GUI/blackheart" + str(i) + "-1.png")
-            self.blackhearts.append([image1, image2])
+            image1 = CG.get_image("GUI/blackheart" + str(i) + "-0.png")
+            image2 = CG.get_image("GUI/blackheart" + str(i) + "-1.png")
+            self.black_hearts.append([image1, image2])
 
-        self.xpbar = []
+        self.xp_bar = []
         for i in range(5):
-            self.xpbar.append(CG.getImage("GUI/xp" + str(i) + ".png"))
+            self.xp_bar.append(CG.get_image("GUI/xp" + str(i) + ".png"))
 
-        self.xpbord = []
+        self.xp_bord = []
         for i in range(3):
-            self.xpbord.append(CG.getImage("GUI/bordexp" + str(i) + ".png"))
+            self.xp_bord.append(CG.get_image("GUI/bordexp" + str(i) + ".png"))
 
-        self.blockSpace = pygame.transform.scale(CG.getImage("GUI/blockSpace.png"), (32, 32))
-        self.brouillard = CG.getImage("Background/Brouillard.png")
+        self.blockSpace = pygame.transform.scale(CG.get_image("GUI/blockSpace.png"), (32, 32))
+        self.fog = CG.get_image("Background/Brouillard.png")
 
-        self.food = [CG.getImage("GUI/food0.png"), CG.getImage("GUI/food1.png")]
-        self.dollar = CG.getImage("GUI/dollar.png")
-        self.arrow = CG.getImage("GUI/arrow.png")
+        self.food = [CG.get_image("GUI/food0.png"), CG.get_image("GUI/food1.png")]
+        self.dollar = CG.get_image("GUI/dollar.png")
+        self.arrow = CG.get_image("GUI/arrow.png")
 
         # Music effects
         self._songs = ['song-1.mp3', 'song-2.mp3', 'song-3.mp3']
@@ -1340,8 +1329,8 @@ class GraphicVariables(object):
 
         # Draw Character
         scale = round(self.height / 5)
-        heroimage = pygame.transform.scale(self.hero.graphicOutput, (scale, scale))
-        self.screen.blit(heroimage, ((self.width / 2) * (1 + 1 / 10), self.height / 10))
+        hero_image = pygame.transform.scale(self.hero.graphicOutput, (scale, scale))
+        self.screen.blit(hero_image, ((self.width / 2) * (1 + 1 / 10), self.height / 10))
 
         # Draw hearts
         for i in range(Hero.defaultHp):
@@ -1373,30 +1362,30 @@ class GraphicVariables(object):
 
         for i in range(1, 11):
             if exp >= 10:
-                image = self.xpbar[0]
+                image = self.xp_bar[0]
                 exp -= 10
             elif exp >= 7.5:
-                image = self.xpbar[1]
+                image = self.xp_bar[1]
                 exp -= 7.5
             elif exp >= 5:
-                image = self.xpbar[2]
+                image = self.xp_bar[2]
                 exp -= 5
             elif exp >= 2.5:
-                image = self.xpbar[3]
+                image = self.xp_bar[3]
                 exp -= 2.5
             else:
-                image = self.xpbar[4]
+                image = self.xp_bar[4]
 
             self.screen.blit(image, (self.width / 2 * (1 + 3 / 10) + 18 * (i - 1), self.height * 3 / 20 + 50))
 
             if i == 1:
-                self.screen.blit(self.xpbord[0],
+                self.screen.blit(self.xp_bord[0],
                                  (self.width / 2 * (1 + 3 / 10) + 18 * (i - 1), self.height * 3 / 20 + 50))
             elif i == 10:
-                self.screen.blit(self.xpbord[2],
+                self.screen.blit(self.xp_bord[2],
                                  (self.width / 2 * (1 + 3 / 10) + 18 * (i - 1), self.height * 3 / 20 + 50))
             else:
-                self.screen.blit(self.xpbord[1],
+                self.screen.blit(self.xp_bord[1],
                                  (self.width / 2 * (1 + 3 / 10) + 18 * (i - 1), self.height * 3 / 20 + 50))
 
         # Draw Hero Level
@@ -1443,7 +1432,7 @@ class GraphicVariables(object):
         self.screen.fill((80, 74, 85), (0, 0, self.width / 2, self.height))
         for y in range(self.height // Map.sizeFactor):
             for x in range(self.width // (2 * Map.sizeFactor)):
-                self.screen.blit(self.brouillard, (x * Map.sizeFactor, y * Map.sizeFactor))
+                self.screen.blit(self.fog, (x * Map.sizeFactor, y * Map.sizeFactor))
 
         for y in range(len(self.floor.graphicMap)):
             for x in range(len(self.floor.graphicMap[y])):
@@ -1451,7 +1440,7 @@ class GraphicVariables(object):
                 if self.floor.graphicMap[y][x][1]:
                     self.screen.blit(self.floor.graphicMap[y][x][0], pos)
                 else:
-                    self.screen.blit(self.brouillard, pos)
+                    self.screen.blit(self.fog, pos)
 
     def drawElements(self, monsterState):
         self.floor.updateElements(monsterState)
@@ -1497,76 +1486,88 @@ class GraphicVariables(object):
             if j < len(self._msg):
                 self._msg.pop(j)
 
-    def drawMenu(self, listeMenu, couleur=(140, 140, 150)):
+    def draw_menu(self, list_menu, colour=(140, 140, 150)):
         self.screen.fill((255, 255, 51), (self.width / 4, self.height / 4, self.width / 2, self.height / 2))
         b = 5
-        self.screen.fill(couleur,
+        self.screen.fill(colour,
                          (self.width / 4 + b, self.height / 4 + b, self.width / 2 - 2 * b, self.height / 2 - 2 * b))
 
-        self.choice = self.choice % len(listeMenu)
+        self.choice = self.choice % len(list_menu)
         size = 40
 
-        for i in range(len(listeMenu)):
+        for i in range(len(list_menu)):
             if i == self.choice:
-                if listeMenu[i][1]:
+                if list_menu[i][1]:
                     f = "> "
                 else:
                     f = "  "
-                    self.choice = (self.choice + 1) % len(listeMenu)
+                    self.choice = (self.choice + 1) % len(list_menu)
             else:
                 f = "  "
             # while
-            if isinstance(listeMenu[i][0], Equipment):
-                objet = listeMenu[i][0].name + ' [ ' + str(listeMenu[i][0].price) + ' ]'
+            if isinstance(list_menu[i][0], Equipment):
+                objet = list_menu[i][0].name + ' [ ' + str(list_menu[i][0].price) + ' ]'
             else:
-                objet = listeMenu[i][0]
+                objet = list_menu[i][0]
 
             text = self.menuFont.render(f + objet, True, (0, 0, 0))
             text_rect = text.get_rect(center=(self.width / 2, self.height / 4 + (i + 1) * size))
             self.screen.blit(text, text_rect)
 
-    def drawMarchand(self, listeObjets):
+    def draw_marchand(self, list_objects):
         lm = [('Que voulez vous acheter ?', False), ('', False)]
 
-        for o in listeObjets:
+        for o in list_objects:
             lm.append((o, True))
         lm += [('', False), ('Maybe Later', True)]
 
-        self.listeMenu = lm
-        self.couleurMenu = (30, 212, 157)
+        self.list_menu = lm
+        self.colour_menu = (30, 212, 157)
         self.menuOn = True
 
-    def drawHeroMove(self):
+    def draw_hero_move(self):
         h = self.hero
         sf = Map.sizeFactor
         persp = -sf / 4
 
-        hasMoved = False
+        has_moved = False
 
         way = Coord(0, 0)
-        if h.moovingUDLR[0]:
+        if h.moving_UDLR[0]:
             # UP
             way += Coord(0, -1)
-        if h.moovingUDLR[1]:
+        elif h.moving_UDLR[1]:
             # DOWN
             way += Coord(0, 1)
-        if h.moovingUDLR[2]:
+        elif h.moving_UDLR[2]:
             # LEFT
             way += Coord(-1, 0)
-        if h.moovingUDLR[3]:
+        elif h.moving_UDLR[3]:
             # RIGHT
             way += Coord(1, 0)
+        elif h.moving_UDLR[4]:
+            # UP LEFT
+            way += Coord(-1, -1)
+        elif h.moving_UDLR[5]:
+            # UP RIGHT
+            way += Coord(1, -1)
+        elif h.moving_UDLR[6]:
+            # DOWN RIGHT
+            way += Coord(1, 1)
+        elif h.moving_UDLR[7]:
+            # DOWN LEFT
+            way += Coord(-1, 1)
 
         if way != Coord(0, 0):
 
-            elemInWay = self.floor.checkMove(h, way)
-            if elemInWay == self.floor.ground:
+            elem_in_way = self.floor.checkMove(h, way)
+            if elem_in_way == self.floor.ground:
                 pos = (sf * h.x + way.x * h.state * sf / 4 + self.orig_x,
                        sf * h.y + way.y * h.state * sf / 4 + self.orig_y + persp)
 
-                self.screen.blit(h.animationUDLR[way.getTupple()][h.state], pos)
+                self.screen.blit(h.animationUDLR[way.get_tuple()][h.state], pos)
                 h.state += 1
-                hasMoved = True
+                has_moved = True
 
                 if h.state >= 4:
                     h.state = 0
@@ -1574,10 +1575,10 @@ class GraphicVariables(object):
                     self.newRound = True
 
                     if self.stop:
-                        h.moovingUDLR = [False] * 4
+                        h.moving_UDLR = [False] * 8
                         self.stop = False
 
-            elif isinstance(elemInWay, Creature):
+            elif isinstance(elem_in_way, Creature):
                 self.floor.move(h, way)
                 self.newRound = True
                 # pos = Coord(h.x+way.x,h.y+way.y)
@@ -1588,54 +1589,64 @@ class GraphicVariables(object):
                     pygame.display.update()
                     pygame.time.delay(50)
 
-            elif isinstance(elemInWay, Element):
+            elif isinstance(elem_in_way, Element):
                 self.floor.move(h, way)
 
-        if not hasMoved:
+        if not has_moved:
             self.screen.blit(h.graphicOutput, (sf * h.x + self.orig_x, sf * h.y + self.orig_y + persp))
 
-    def playerPlays(self, event):
+    def player_plays(self, event):
         do = False
+
         if event.type == pygame.KEYDOWN:
-            keydownBool = True
+            keydown_bool = True
             do = True
         elif event.type == pygame.KEYUP:
-            keydownBool = False
+            keydown_bool = False
             do = True
 
         # Mouvement
         if do:
 
-            if keydownBool or self.hero.state == 0:
+            if keydown_bool or self.hero.state == 0:
+                self.hero.moving_UDLR = [False] * 8
 
                 if self.qwerty:
-
                     if event.key == pygame.K_w:
-                        self.hero.moovingUDLR[0] = keydownBool
-                    elif event.key == pygame.K_s:
-                        self.hero.moovingUDLR[1] = keydownBool
+                        self.hero.moving_UDLR[0] = keydown_bool
                     elif event.key == pygame.K_a:
-                        self.hero.moovingUDLR[2] = keydownBool
-                    elif event.key == pygame.K_d:
-                        self.hero.moovingUDLR[3] = keydownBool
+                        self.hero.moving_UDLR[2] = keydown_bool
+                    elif event.key == pygame.K_q:
+                        self.hero.moving_UDLR[4] = keydown_bool
+                    elif event.key == pygame.K_z:
+                        self.hero.moving_UDLR[7] = keydown_bool
                 else:
                     if event.key == pygame.K_z:
-                        self.hero.moovingUDLR[0] = keydownBool
-                    elif event.key == pygame.K_s:
-                        self.hero.moovingUDLR[1] = keydownBool
+                        self.hero.moving_UDLR[0] = keydown_bool
                     elif event.key == pygame.K_q:
-                        self.hero.moovingUDLR[2] = keydownBool
-                    elif event.key == pygame.K_d:
-                        self.hero.moovingUDLR[3] = keydownBool
+                        self.hero.moving_UDLR[2] = keydown_bool
+                    elif event.key == pygame.K_a:
+                        self.hero.moving_UDLR[4] = keydown_bool
+                    elif event.key == pygame.K_w:
+                        self.hero.moving_UDLR[7] = keydown_bool
+
+                if event.key == pygame.K_x:
+                    self.hero.moving_UDLR[1] = keydown_bool
+                elif event.key == pygame.K_d:
+                    self.hero.moving_UDLR[3] = keydown_bool
+                elif event.key == pygame.K_e:
+                    self.hero.moving_UDLR[5] = keydown_bool
+                elif event.key == pygame.K_c:
+                    self.hero.moving_UDLR[6] = keydown_bool
 
                 # Actions
-                if keydownBool:
-                    self.chooseAction(event)
+                if keydown_bool:
+                    self.choose_action(event)
 
             else:
                 self.stop = True
 
-    def chooseAction(self, event):
+    def choose_action(self, event):
         if event.key == pygame.K_k:
             Game._actions['k'](self.hero)
         elif event.key == pygame.K_i:
@@ -1645,7 +1656,7 @@ class GraphicVariables(object):
         elif event.key == pygame.K_n:
             Game._actions['n'](self.hero)
 
-    def chooseInMenu(self, event):
+    def choose_in_menu(self, event):
         if self.qwerty:
             if event.key == pygame.K_w:
                 self.choice -= 1
@@ -1659,40 +1670,40 @@ class GraphicVariables(object):
 
         if event.key == pygame.K_RETURN:
 
-            thischoice = self.listeMenu[self.choice][0]
+            this_choice = self.list_menu[self.choice][0]
 
-            if thischoice == "New Game":
+            if this_choice == "New Game":
                 self.menuOn = not self.menuOn
-                self.listeMenu = self.optionsMenu
+                self.list_menu = self.optionsMenu
 
-            elif thischoice == "Resume Game" or thischoice == 'Maybe Later':
+            elif this_choice == "Resume Game" or this_choice == 'Maybe Later':
                 self.menuOn = not self.menuOn
 
-            elif thischoice == "Exit Game":
+            elif this_choice == "Exit Game":
                 self.running = False
 
-            elif thischoice == "Choose Character":
-                self.listeMenu = self.optionsHero
+            elif this_choice == "Choose Character":
+                self.list_menu = self.optionsHero
                 self.choice = 0
 
-            elif self.listeMenu[self.choice] in self.optionsHero:
-                self.changeHeroAppearance(thischoice)
+            elif self.list_menu[self.choice] in self.optionsHero:
+                self.change_hero_appearance(this_choice)
                 self.choice = 0
-                self.listeMenu = self.optionsMenu
+                self.list_menu = self.optionsMenu
 
-            elif thischoice == "Show Controls":
-                self.listeMenu = self.optionsConstrols
+            elif this_choice == "Show Controls":
+                self.list_menu = self.options_controls
 
-            elif thischoice == "Return":
-                self.listeMenu = self.optionsMenu
+            elif this_choice == "Return":
+                self.list_menu = self.optionsMenu
 
             # Marchand
 
-            elif isinstance(thischoice, Equipment):
-                self.hero.buy(thischoice)
+            elif isinstance(this_choice, Equipment):
+                self.hero.buy(this_choice)
                 self.menuOn = False
 
-    def chooseInInventory(self, event):
+    def choose_in_inventory(self, event):
 
         if self.qwerty:
             if event.key == pygame.K_a:
@@ -1716,11 +1727,11 @@ class GraphicVariables(object):
             self.inventoryOn = False
 
         elif event.key == pygame.K_b:
-            Game._actions["b"]
+            Game._actions["b"](self.hero)
             self.inventoryOn = False
 
         elif event.key == pygame.K_n:
-            Game._actions["n"]
+            Game._actions["n"](self.hero)
             self.inventoryOn = False
 
         elif event.key == pygame.K_i:
@@ -1731,22 +1742,22 @@ class GraphicVariables(object):
 
         self.floor.updateElements(self.monsterState)
 
-    def changeHeroAppearance(self, costume):
-        images = CG.getHeroImage(costume)
+    def change_hero_appearance(self, costume):
+        images = CG.get_hero_image(costume)
         self.hero.graphicOutput = images[0]
         self.hero.animationUDLR = [images[12:16], images[:4], images[4:8], images[8:12]]
 
-    def selectFromInventory(self, classe):
+    def select_from_inventory(self, classe):
         if self.choiceInv < len(self.hero._inventory) and isinstance(self.hero._inventory[self.choiceInv], classe):
             return self.hero._inventory[self.choiceInv]
         return None
 
-    def drawGameScreen(self):
+    def draw_game_screen(self):
         self.drawMap()
         self.drawElements(self.monsterState)
-        self.drawHeroMove()
+        self.draw_hero_move()
 
-    def updateBrouillard(self, map):
+    def update_brouillard(self, map):
         for o in [map.hero, Game.monsters[20][0]]:
             if isinstance(o, Hero):
                 x = self.hero.x
@@ -1758,13 +1769,13 @@ class GraphicVariables(object):
                 x = c.x
                 y = c.y
 
-            rayon = 5
+            radius = 5
 
-            for i in range(-rayon, rayon + 1):
-                for j in range(-rayon, rayon + 1):
+            for i in range(-radius, radius + 1):
+                for j in range(-radius, radius + 1):
                     c = Coord(x + i, y + j)
                     if self.floor is not None and self.floor.inGraphicMap(c):
-                        if Coord(x, y).distance(c) <= rayon:
+                        if Coord(x, y).distance(c) <= radius:
                             self.floor.graphicMap[y + j][x + i][1] = True
 
     def play_next_song(self):
@@ -1803,21 +1814,23 @@ class Game(object):
     """ available weapons """
     _weapons = {
         0: [Weapon("Basic Sword", "†", "hitting", usage=None, damage=3, durability=10)],
-        1: [Weapon("Shuriken", "*", "hitting", usage=lambda self, hero: Weapon.hit)],
+        1: [Weapon("Basic Sword", "†", "hitting", usage=None, damage=3, durability=10)],
+        # 0: [Weapon("Basic Sword", "†", "hitting", usage=None, damage=3, durability=10)],
+        # 1: [Weapon("Shuriken", "*", "hitting", usage=lambda self, hero: Weapon.hit)],
         2: [],
     }
 
     """ available monsters """
-    monsters = {0: [Creature("Goblin", hp=4, strength=1, xp=4), \
-                    Creature("Bat", hp=2, abbreviation="W", strength=1, xp=2), \
-                    Creature("BabyDemon", hp=2, strength=2, xp=4)], \
-                1: [Creature("Ork", hp=6, strength=2, xp=10), \
-                    Creature("Blob", hp=10, xp=8), \
-                    Creature("Angel", hp=10, strength=1, xp=4)], \
+    monsters = {0: [Creature("Goblin", hp=4, xp=4),
+                    Creature("Bat", hp=2, abbreviation="W", xp=2),
+                    Creature("BabyDemon", hp=2, strength=2, xp=4)],
+                1: [Creature("Ork", hp=6, strength=2, xp=10),
+                    Creature("Blob", hp=10, xp=8),
+                    Creature("Angel", hp=10, xp=4)],
                 3: [Creature("Poisonous spider", hp=5, xp=10, strength=0, abbreviation="&",
                              powers_list=[[PoisonEffect, 2, 1]])],
                 5: [Creature("Dragon", hp=20, strength=3, xp=50)],
-                20: [Creature("Death", hp=50, strength=3, xp=100, abbreviation='ñ')] \
+                20: [Creature("Death", hp=50, strength=3, xp=100, abbreviation='ñ')]
                 }
 
     """ available actions """
@@ -1833,7 +1846,7 @@ class Game(object):
                 # 'i': lambda h: the_game().add_message(h.full_description()),
                 'k': lambda h: h.__setattr__('hp', 0),
                 # 'u': lambda h: h.use(the_game().select(h._inventory)),
-                'u': lambda h: h.use(the_game().gv.selectFromInventory(Equipment)),
+                'u': lambda h: h.use(the_game().gv.select_from_inventory(Equipment)),
                 ' ': lambda h: None,
                 'h': lambda hero: the_game().add_message("Actions available : " + str(list(Game._actions.keys()))),
                 't': lambda hero: hero.delete_item(
@@ -1842,37 +1855,37 @@ class Game(object):
                     isinstance(elem, Weapon) for elem in hero._inventory) else the_game().add_message(
                     "You don't have any weapon in your inventory"),
                 'n': lambda hero: hero.remove_current_weapon(),
-                'l': lambda hero: hero.throw_item(the_game().gv.selectFromInventory(Equipment), 5)
+                'l': lambda hero: hero.throw_item(the_game().gv.select_from_inventory(Equipment), 5)
 
                 }
 
-    _roomObjects = {'upstair': RoomObject('upstair', "^", usage=lambda: RoomObject.monterEtage()),
-                    'downstair': RoomObject('downstair', "v", usage=lambda: RoomObject.descendreEtage()),
-                    'marchand': RoomObject('marchand', "€", usage=lambda: RoomObject.meetMarchand()),
-                    }
+    _room_objects = {'upstair': RoomObject('upstair', "^", usage=lambda: RoomObject.go_upstairs()),
+                     'downstair': RoomObject('downstair', "v", usage=lambda: RoomObject.go_downstairs()),
+                    'marchand': RoomObject('marchand', "€", usage=lambda: RoomObject.meet_trader()),
+                     }
 
     _specialRoomsList = {"finalBoss": Room(Coord(1, 1), Coord(19, 10), [monsters[20][0]]),
-                         'marchand': Room(Coord(15, 15), Coord(19, 19), [_roomObjects['marchand']]),
+                         'marchand': Room(Coord(15, 15), Coord(19, 19), [_room_objects['marchand']]),
                          }
 
     sizeFactor = Map.sizeFactor
 
-    def __init__(self, level=1, hero=None, nbFloors=2):
+    def __init__(self, level=1, hero=None, nb_floors=4):
 
         self.level = level
         self.active_effects = []
         self._message = []
 
         if hero is None:
-            hero = Hero()
+            hero = Hero(strength=10000)
         self.hero = hero
 
-        self.nbFloors = nbFloors
+        self.nb_floors = nb_floors
         self.floorList = []
         self.actualFloor = 0
         self.floor = None
 
-        self.numberOfRound = 0
+        self.number_of_round = 0
         self.applyEffectsBool = False
 
         # GRAPHICS
@@ -1881,20 +1894,20 @@ class Game(object):
     def build_floor(self):
         """Creates a map for the current floor."""
 
-        placeHero = True
-        rand = random.randint(0, self.nbFloors - 2)
+        place_hero = True
+        rand = random.randint(0, self.nb_floors - 2)
         marchand = None
 
-        for i in range(self.nbFloors):
-            print('Building Floor ' + str(i + 1) + '/' + str(self.nbFloors))
+        for i in range(self.nb_floors):
+            print('Building Floor ' + str(i + 1) + '/' + str(self.nb_floors))
 
             if i == rand:
-                self.floorList.append(Map(hero=self.hero, putHero=placeHero, floorNumber=i, specialRoom='marchand'))
-            elif i == self.nbFloors - 1:
-                self.floorList.append(Map(hero=self.hero, putHero=placeHero, floorNumber=i, specialRoom='finalBoss'))
+                self.floorList.append(Map(hero=self.hero, putHero=place_hero, floorNumber=i, specialRoom='marchand'))
+            elif i == self.nb_floors - 1:
+                self.floorList.append(Map(hero=self.hero, putHero=place_hero, floorNumber=i, specialRoom='finalBoss'))
             else:
-                self.floorList.append(Map(hero=self.hero, putHero=placeHero, floorNumber=i))
-            placeHero = False
+                self.floorList.append(Map(hero=self.hero, putHero=place_hero, floorNumber=i))
+            place_hero = False
 
         self.gv.floor = self.floor = self.floorList[self.actualFloor]
 
@@ -1919,6 +1932,7 @@ class Game(object):
 
     def rand_element(self, collect):
         """Returns a clone of random element from a collection using exponential random law."""
+
         x = random.expovariate(1 / self.level)
         for k in collect.keys():
             if k <= x:
@@ -1933,86 +1947,9 @@ class Game(object):
         """Returns a random monster."""
         return self.rand_element(Game.monsters)
 
-    @staticmethod
-    def select(items_list: list) -> Element:
+    def play_with_graphics(self):
 
-        print("Choose an item> " + str([str(items_list.index(e)) + ": " + e.name for e in items_list]))
-
-        c = getch()
-
-        if c.isdigit() and int(c) in range(len(items_list)):
-            return items_list[int(c)]
-        elif len(l) == 0:
-            print("You don't have any item in your inventory.")
-
-    @staticmethod
-    def select_item_to_del(items_list: list) -> Element:
-
-        print("Choose an item to delete> " + str([str(items_list.index(e)) + ": " + e.name for e in items_list]))
-
-        c = getch()
-
-        if c.isdigit() and int(c) in range(len(items_list)) and len(items_list) != 0:
-            return items_list[int(c)]
-        elif len(l) == 0:
-            print("You don't have any item in your inventory.")
-
-    @staticmethod
-    def select_weapon(element_list):
-
-        list_weapon = [e for e in element_list if isinstance(e, Weapon)]
-
-        print("Choose a weapon> " + str([str(list_weapon.index(e)) + ": " + e.name for e in list_weapon]))
-
-        c = getch()
-
-        if c.isdigit() and int(c) in range(len(list_weapon)) and len(list_weapon) != 0:
-            return list_weapon[int(c)]
-
-    def play(self):
-
-        """Main game loop"""
-
-        self.build_floor()
-
-        print("--- Welcome Hero! ---")
-
-        while self.hero.hp > 0:
-
-            print()
-            print(self.floor)
-            print(self.hero.description())
-            print(self.read_messages())
-
-            self.hero.check_inventory_size()
-
-            print(self.read_messages())
-
-            c = getch()
-            if c in Game._actions:
-                Game._actions[c](self.hero)
-
-                if c in {"a", "z", "e", "q", "d", "w", "x", "c"}:
-
-                    self.floor.move_all_monsters()
-                    self.number_of_round += 1
-
-                    if self.number_of_round % 20 == 0 and self.hero.stomach > 0:
-                        self.hero.stomach -= 1
-
-                    self.hero.verify_stomach()
-
-                    if len(self.active_effects) != 0:
-                        i = 0
-                        while i < len(self.active_effects):
-                            if not self.active_effects[i].update():
-                                i += 1
-
-        print("--- Game Over ---")
-
-    def playWithGraphics(self):
-
-        print("\n--- Initialiting Graphics ---")
+        print("\n--- Initialising Graphics ---")
         print("Loading ...")
 
         self.build_floor()
@@ -2021,9 +1958,9 @@ class Game(object):
         pygame.init()
 
         # Create the screen
-        infoObject = pygame.display.Info()
-        height = self.gv.height = infoObject.current_h - 60
-        width = self.gv.width = infoObject.current_w
+        info_object = pygame.display.Info()
+        height = self.gv.height = info_object.current_h - 60
+        width = self.gv.width = info_object.current_w
 
         # orig_x = self.gv.orig_x = width/10
         orig_x = self.gv.orig_x = width / 4 - 10 * Map.sizeFactor
@@ -2037,7 +1974,7 @@ class Game(object):
         pygame.display.set_icon(icon)
 
         # Font
-        self.gv.gameFont = pygame.font.SysFont('Agencyfc', 30)
+        self.gv.gameFont = pygame.font.SysFont('font1.ttf', 30)
         self.gv.menuFont = pygame.font.SysFont('papyrus', 40)
 
         # Music
@@ -2046,7 +1983,7 @@ class Game(object):
         self.gv.play_next_song()
 
         # Initialize Brouillard
-        self.gv.updateBrouillard(self.floor)
+        self.gv.update_brouillard(self.floor)
 
         while self.gv.running:
 
@@ -2071,23 +2008,23 @@ class Game(object):
 
                     if event.key == pygame.K_ESCAPE:
                         self.gv.menuOn = not self.gv.menuOn
-                        self.gv.listeMenu = self.gv.optionsMenu
-                        self.gv.couleurMenu = (140, 140, 150)
+                        self.gv.list_menu = self.gv.optionsMenu
+                        self.gv.colour_menu = (140, 140, 150)
 
                         self.gv.inventoryOn = False
 
                     if self.gv.menuOn:
-                        self.gv.chooseInMenu(event)
+                        self.gv.choose_in_menu(event)
 
                     if self.gv.inventoryOn:
                         self.gv.chooseInInventory(event)
 
                 if not self.gv.inventoryOn:
-                    self.gv.playerPlays(event)
+                    self.gv.player_plays(event)
 
             # Menu
             if self.gv.menuOn:
-                self.gv.drawMenu(self.gv.listeMenu, self.gv.couleurMenu)
+                self.gv.draw_menu(self.gv.list_menu, self.gv.colour_menu)
 
             else:
                 # Background
@@ -2095,20 +2032,20 @@ class Game(object):
 
                 if self.hero.hp <= 0:
                     # self.hero.hp = 1
-                    self.gv.listeMenu = self.gv.optionsGameOver
+                    self.gv.list_menu = self.gv.optionsGameOver
                     self.gv.menuOn = True
 
                 self.hero.check_inventory_size()
 
                 if self.gv.newRound:
                     self.gv.newRound = False
-                    self.numberOfRound += 1
+                    self.number_of_round += 1
                     self.applyEffectsBool = True
 
                     # self.gv.updateBrouillard()
                     self.floor.move_all_monsters()
 
-                    if self.numberOfRound % 20 == 0 and self.hero.__dict__["stomach"] > 0:
+                    if self.number_of_round % 20 == 0 and self.hero.__dict__["stomach"] > 0:
                         self.hero.__dict__["stomach"] -= 1
                     self.hero.verify_stomach()
 
@@ -2123,7 +2060,7 @@ class Game(object):
                 # Messages
                 self.gv.drawMessage(200)
 
-                self.gv.drawGameScreen()
+                self.gv.draw_game_screen()
 
             pygame.display.update()
         # running = False
@@ -2137,4 +2074,4 @@ def the_game(game=Game()):
 
 # getch = _find_getch()
 # the_game().play()
-the_game().playWithGraphics()
+the_game().play_with_graphics()
