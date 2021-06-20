@@ -1947,8 +1947,7 @@ class Game(object):
 
     def rand_element(self, collect, floor_level):
         """Returns a clone of random element from a collection using exponential random law."""
-
-        x = random.expovariate(1 / self.level)
+        x = random.expovariate(1 / (floor_level+1))
         for k in collect.keys():
             if k <= x:
                 element_list = collect[k]
