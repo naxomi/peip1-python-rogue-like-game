@@ -412,9 +412,15 @@ class Hero(Creature):
 
     def delete_item(self, elem, throwing=False):
         """Delete an element from the inventory"""
-        if len(self._inventory) > 0:
+        if len(self._inventory) >= 0:
             if elem in self._inventory:
                 self._inventory.remove(elem)
+                if throwing:
+                    the_game().add_message(f"You have successfully thrown the item : {elem.name}")
+                else:
+                    the_game().add_message(f"You have successfully deleted the item : {elem.name}")
+            elif elem in self.weapon_slot:
+                self.weapon_slot.remove(elem)
                 if throwing:
                     the_game().add_message(f"You have successfully thrown the item : {elem.name}")
                 else:
@@ -1936,7 +1942,7 @@ class Game(object):
     weapons = {
         0: [Weapon("Basic Sword", "†", price=2, damage=random.randint(2, 6), launching_damage=random.randint(1, 3))],
         1: [Weapon("Shuriken", "*", damage=random.randint(1, 2), launching_damage=random.randint(3, 5))],
-        3: [Weapon("Boomerang", "¬", price=7, damage=random.randint(1, 2), launching_damage=random.randint(2, 3),
+        2: [Weapon("Boomerang", "¬", price=3, damage=random.randint(1, 2), launching_damage=random.randint(2, 3),
                    come_back=True)],
     }
 
