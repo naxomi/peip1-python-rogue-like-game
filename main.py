@@ -1252,13 +1252,12 @@ class GraphicVariables(object):
 
         self.qwerty = False
 
-        self.options_menu_start = [("Menu", False), ("", False), ("New Game", True), ("Show Controls", True),
-                                   ("Choose Character", True), ("Exit Game", True)]
-        self.options_menu = [("Menu", False), ("", False), ("Resume Game", True), ("Show Controls", True),
-                             ("Choose Character", True), ("Exit Game", True)]
+        self.options_menu_start = [("Menu", False), ("", False), ("New Game", True), ("Preferences", True),
+                                   ("Exit Game", True)]
+        self.options_menu = [("Menu", False), ("", False), ("Resume Game", True), ("Preferences", True),
+                             ("Exit Game", True)]
         self.options_hero = [("Characters", False), ("", False), ("Template", True), ("Rogue", True),
-                             ("Engineer", True),
-                             ("Warrior", True), ("Mage", True), ("Paladin", True)]
+                             ("Engineer", True), ("Warrior", True), ("Mage", True), ("Paladin", True)]
         self.options_controls = [
             ("i : open inventory", False),
             ("k : suicide", False),
@@ -1267,7 +1266,14 @@ class GraphicVariables(object):
             ("n : remove current weapon", False),
             ("", False),
             ("Return", True)]
-
+        self.options_preferences = [('Preferences', False),
+                                    ('', False),
+                                    ('Show Controls', True),
+                                    ('Set Qwerty', True),
+                                    ('Set Azerty', True),
+                                    ('Choose Character', True),
+                                    ('', False),
+                                    ('Return', True)]
         self.options_game_over = [("-- Game Over --", False), ("", False), ("Exit Game", True)]
 
         # Menu
@@ -1681,10 +1687,25 @@ class GraphicVariables(object):
                 self.choice = 0
                 self.list_menu = self.options_menu
 
+
             elif this_choice == "Show Controls":
                 self.list_menu = self.options_controls
 
             elif this_choice == "Return":
+                self.list_menu = self.options_menu
+
+            elif this_choice == "Preferences":
+                self.list_men = self.options_preferences
+
+
+            elif this_choice == "Set Qwerty":
+                self.qwerty = True
+                self.choice = 0
+                self.list_menu = self.options_menu
+
+            elif this_choice == "Set Azerty":
+                self.qwerty = False
+                self.choice = 0
                 self.list_menu = self.options_menu
 
             # Marchand
@@ -1967,7 +1988,6 @@ class Game(object):
         print("Loading ...")
 
         self.build_floor()
-        print(self.floor)
 
         pygame.init()
 
