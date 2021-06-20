@@ -4,7 +4,8 @@ import random
 import CasesGraphiques as CG
 import pygame
 
-# random.seed(234)
+random.seed(234789)
+
 
 def _find_getch():
     """Single char input, only works only on mac/linux/windows OS terminals"""
@@ -125,8 +126,7 @@ class Element(object):
 
 class RoomObject(Element):
 
-    def __init__(self, name: str = "", abbreviation: str = "", usage=None) -> None:
-        # TODO : What is the type of a lambda expression
+    def __init__(self, name: str = "", abbreviation: str = "", usage: "function" = None) -> None:
         Element.__init__(self, name, abbreviation)
 
         self.usage = usage
@@ -190,8 +190,10 @@ class RoomObject(Element):
     def meet_trader() -> None:
         list_of_items_sold = []
         for i in range(2):
-            list_of_items_sold.append(the_game().rand_element(Game.equipments, the_game().floor_list[the_game().actual_floor].floor_number))
-        list_of_items_sold.append(the_game().rand_element(Game._weapons,the_game().floor_list[the_game().actual_floor].floor_number))
+            list_of_items_sold.append(
+                the_game().rand_element(Game.equipments, the_game().floor_list[the_game().actual_floor].floor_number))
+        list_of_items_sold.append(
+            the_game().rand_element(Game._weapons, the_game().floor_list[the_game().actual_floor].floor_number))
 
         the_game().gv.draw_marchand(list_of_items_sold)
 
@@ -203,7 +205,7 @@ class Creature(Element):
     defaultInventorySize = 10
 
     def __init__(self, name: str, hp: int, abbreviation: str = "", strength: int = 1, xp: int = 0,
-                 weapon_slot: list = None, powers_list: list = None) -> None:
+                 weapon_slot: list = None, powers_list: list = None, cooldown: int = 0) -> None:
         super().__init__(name, abbreviation)
         self.hp = hp
         self.default_hp = hp
@@ -219,6 +221,9 @@ class Creature(Element):
             self.powers_list = powers_list
         else:
             self.powers_list = []
+
+        self.cooldown = 0
+        self._default_cooldown = cooldown
 
         # self._inventory = [Weapon("HUGE Sword", "T", usage=None, durability=100, damage=100)]
         self._inventory = []
@@ -253,10 +258,14 @@ class Creature(Element):
 
         if len(other.powers_list) != 0:
             for effect_infos_list in other.powers_list:
-                effect_infos_list[0].add_effect(
-                    effect_infos_list[0](the_game(), self, effect_infos_list[1], effect_infos_list[2]))
+                if other.cooldown == 0:  # The cooldown ended
+                    effect_infos_list[0].add_effect(
+                        effect_infos_list[0](the_game(), self, effect_infos_list[1], effect_infos_list[2]))
+                    other.cooldown = other._default_cooldown
+                else:
+                    other.cooldown -= 1
 
-        if other.has_weapon() and other.has_an_hitting_weapon():
+        if other.has_weapon():
             self.hp -= other.current_weapon().damage
         else:
             self.hp -= other.strength
@@ -289,21 +298,6 @@ class Creature(Element):
             return self.weapon_slot[0]
         else:
             return False
-
-    def has_an_hitting_weapon(self):
-        if self.current_weapon().weaponType == Weapon._weapon_type_list[0]:
-            return True
-
-    def has_a_throwing_weapon(self):
-        if self.current_weapon().weaponType == Weapon._weapon_type_list[1]:
-            return True
-
-    def has_a_projectile_weapon(self):
-        if self.current_weapon().weaponType == Weapon._weapon_type_list[2]:
-            return True
-
-    # def applyStuffEffects(self):
-    #     return
 
 
 class Hero(Creature):
@@ -535,21 +529,32 @@ class Hero(Creature):
                 things_on_next_cell = the_game().floor.get(the_game().floor.pos(item) + direction)
 
             if isinstance(things_on_next_cell, Creature):
-                item.use(things_on_next_cell, monster=True)
+                hit = False
+                if isinstance(item, Weapon):
+                    things_on_next_cell.hp -= item.damage
+                    hit = True
+                else:
+                    item.use(things_on_next_cell, monster=True)
+
                 if i != 0:
                     the_game().floor.rm(the_game().floor.pos(item))
                 self.delete_item(item, True)
+                if hit:
+                    the_game().add_message(f"[{things_on_next_cell.name}] lost {item.damage} hp")
                 break
+
             elif isinstance(things_on_next_cell, Equipment):
                 if i == 0:
                     the_game().add_message("You can't throw the item in this direction")
                 else:
                     self.delete_item(item, True)
                 break
+
             elif things_on_next_cell != the_game().floor.ground:
                 if i == 0:
                     the_game().add_message("You can't throw the item in this direction")
                 break
+
             elif things_on_next_cell == the_game().floor.ground:
                 if i == 0:
                     the_game().floor.put(item_coord, item)
@@ -557,6 +562,7 @@ class Hero(Creature):
                     self.delete_item(item, True)
                 else:
                     the_game().floor.move(item, direction)
+
             else:
                 raise NotImplementedError("Error might be due to an object not being managed.")
 
@@ -580,7 +586,8 @@ class Effect(object):
             pass
 
     def update(self):
-        self.action()
+        if isinstance(self, EphemeralEffect):
+            self.action()
 
         if self.duration is not None:
             self.duration -= 1
@@ -754,18 +761,26 @@ class ConstantEffect(Effect):
 
     def __init__(self, game, creature):
         super().__init__(game, creature)
-        self.hasBeenActivated = False
+        self.has_been_activated = False
 
-    def activate(self):
-        if not self.hasBeenActivated:
+    def activate(self, unique=True):
+        if not self.has_been_activated:
             super().activate()
-            self.hasBeenActivated = True
+            self.has_been_activated = True
+
+        super().update()
+
+        return unique
+
+    def deactivate(self):
+        self.info += f" [{self.creature.name}] {self.name} effect disappeared"
+        super().deactivate()
 
 
 class StrengthEffect(ConstantEffect):
     LEVEL_FACTOR = 1
     DESCRIPTION_ACTIVATE = "I feel stronger : +"
-    DESCRIPTION_DEACTIVATE = "- End of boost - I feel weaker... : -"
+    DESCRIPTION_DEACTIVATE = "<End of boost> I feel weaker : -"
 
     def __init__(self, game, creature, duration=None, level=1):
         super().__init__(game, creature)
@@ -780,56 +795,55 @@ class StrengthEffect(ConstantEffect):
         self.info = f"[{self.creature.name}] | {self.name}<{self.level}> | {StrengthEffect.DESCRIPTION_ACTIVATE}{self.value}"
         super().action()
 
-    def activate(self):
-        super().activate()
+    def activate(self, unique=True):
+        if not self.has_been_activated:
+            super().activate(unique)
+        super().update()
+        return unique
 
     def deactivate(self):
         self.creature.strength -= self.value
-
         self.info = f"[{self.creature.name}] | {self.name}<{self.level}> | {StrengthEffect.DESCRIPTION_DEACTIVATE}{self.value}"
         super().deactivate()
 
 
 class WeaknessEffect(ConstantEffect):
     LEVEL_FACTOR = 1
-    DESCRIPTION_ACTIVATE = "I feel weaker : +"
-    DESCRIPTION_DEACTIVATE = "- End of malus - I feel stronger... : -"
+    DESCRIPTION_ACTIVATE = "I feel weaker : -"
+    DESCRIPTION_DEACTIVATE = "<End of malus> I feel stronger : +"
 
-    def __init__(self, game, creature, duration, level):
+    def __init__(self, game, creature, duration=None, level=1):
         super().__init__(game, creature)
         self.name = "Weakness"
         self.duration = duration
         self.level = level
         self.value = self.level * WeaknessEffect.LEVEL_FACTOR
 
-    def activate(self):
+    def action(self):
         self.creature.strength -= self.value
 
-        if not self.hasBeenActivated:
-            self.game.activeEffects.append(self)
-            self.hasBeenActivated = True
+        self.info = f"[{self.creature.name}] | {self.name}<{self.level}> | {WeaknessEffect.DESCRIPTION_ACTIVATE}{self.value}"
+        super().action()
 
-        if isinstance(self.creature, Hero):
-            self.info = f"{self.name}<{self.level}> | {WeaknessEffect.DESCRIPTION_ACTIVATE}{self.value}"
+    def activate(self, unique=True):
+        if not self.has_been_activated:
+            super().activate(unique)
+        super().update()
+        return unique
 
     def deactivate(self):
         self.creature.strength += self.value
-
-        if isinstance(self.creature, Hero):
-            self.info = f"{self.name}<{self.level}> | {WeaknessEffect.DESCRIPTION_DEACTIVATE}{self.value}"
-
+        self.info = f"[{self.creature.name}] | {self.name}<{self.level}> | {WeaknessEffect.DESCRIPTION_DEACTIVATE}{self.value}"
         super().deactivate()
-
 
 
 # EQUIPMENT
 class Equipment(Element):
     """A piece of equipment"""
 
-    def __init__(self, name, abbreviation="", usage=None, durability=None, price=1):
+    def __init__(self, name, abbreviation="", usage=None, price=1):
         Element.__init__(self, name, abbreviation)
         self.usage = usage
-        self.durability = durability
         self.price = price
 
         # GRAPHICS
@@ -854,38 +868,13 @@ class Equipment(Element):
             the_game().add_message(f"The {creature.name} uses the item {self.name}")
             return self.usage(self, creature)
 
-    # def isDurabilityValid(self):
-    #     if self.durability == 0:
-    #         return False
-    #     return True
-
 
 class Weapon(Equipment):
     """A weapon which can be used by the Hero or the monsters"""
 
-    _weapon_type_list = ["hit", "throw", "projectile"]
-
-    def __init__(self, name, abbreviation="", weapon_type=_weapon_type_list[0], usage=None, effects_list=None, damage=1,
-                 durability=10):
-        Equipment.__init__(self, name, abbreviation, usage, durability)
-        self.weaponType = weapon_type
-
-        if effects_list is not None:
-            self.effectsList = effects_list  # effects applied to the creature being hit
-        else:
-            self.effectsList = []
-
+    def __init__(self, name, abbreviation="", usage=None, damage=1):
+        Equipment.__init__(self, name, abbreviation, usage)
         self.damage = damage
-
-    def apply_weapon_effects(self, creature):
-        for effect in self.effectsList:
-            creature.add_effect(effect, True)
-
-    def throw(self, distance):
-        return
-
-    def launch_projectile(self, distance, projectile_to_use):
-        return
 
 
 class Room(object):
@@ -986,12 +975,9 @@ class Map(object):
         self.graphic_map = []
         CG.generate_graphic_map(self)
         self.graphic_elements = []
-        # TODO : This for loop can be done in a list comprehension
+
         for i in range(len(self.graphic_map)):
-            l = []
-            for j in range(len(self.graphic_map)):
-                l.append(None)
-            self.graphic_elements.append(l)
+            self.graphic_elements.append([None] * len(self.graphic_map))
 
         self.put_room_objects()
         if put_hero:
@@ -1077,7 +1063,7 @@ class Map(object):
     def generate_rooms(self, n):
         """Generates n random rooms and adds them if non-intersecting."""
         if self.special_room is not None:
-            self.add_room(Game._specialRoomsList[self.special_room])
+            self.add_room(Game._special_rooms_list[self.special_room])
         for i in range(n):
             r = self.rand_room()
             if self.intersect_none(r):
@@ -1802,8 +1788,6 @@ class Game(object):
 
     """ available equipments """
     equipments = {0: [Equipment("gold", "o"),
-                      Equipment("healing potion", "!",
-                                usage=lambda self, hero: HealEffect.activate(HealEffect(the_game(), hero, 1, 3))),
                       Equipment("basic bread", "§", usage=lambda self, hero: FeedEffect.activate(
                           FeedEffect(the_game(), hero, 1, hero.default_stomach_size))),
                       Equipment("hunger mushroom", "£",
@@ -1811,24 +1795,34 @@ class Game(object):
                       Equipment("poisonous mushroom", "%",
                                 usage=lambda self, hero: PoisonEffect.activate(PoisonEffect(the_game(), hero, 3, 1))),
                       ],
-                  1: [Equipment("teleport potion", "!",
+                  1: [Equipment("strength potion", "!",
+                                usage=lambda self, hero: StrengthEffect.activate(
+                                    StrengthEffect(the_game(), hero, 10, 3))),
+                      Equipment("weakness potion", "!",
+                                usage=lambda self, hero: WeaknessEffect.activate(WeaknessEffect(the_game(), hero, 10))),
+                      Equipment("teleport potion", "!",
                                 usage=lambda self, hero: TeleportEffect.activate(TeleportEffect(the_game(), hero))),
+                      Equipment("healing potion", "!",
+                                usage=lambda self, hero: HealEffect.activate(HealEffect(the_game(), hero, 1, 3))),
                       ],
                   2: [Equipment("milk", "m", usage=lambda self, hero: Effect.clear(Effect(the_game(), hero))),
                       ],
                   3: [Equipment("portoloin", "w",
                                 usage=lambda self, hero: TeleportEffect.activate(TeleportEffect(the_game(), hero),
                                                                                  False)),
+                      Equipment("healing potion", "!",
+                                usage=lambda self, hero: HealEffect.activate(HealEffect(the_game(), hero, 1, 6))),
+                      Equipment("strength potion", "!",
+                                usage=lambda self, hero: StrengthEffect.activate(
+                                    StrengthEffect(the_game(), hero, 10, 10))),
                       ],
                   }
 
     """ available weapons """
     _weapons = {
-        0: [Weapon("Basic Sword", "†", "hitting", damage=3)],
-        1: [Weapon("Basic Sword", "†", "hitting", damage=3)],
-        # 0: [Weapon("Basic Sword", "†", "hitting", usage=None, damage=3, durability=10)],
-        # 1: [Weapon("Shuriken", "*", "hitting", usage=lambda self, hero: Weapon.hit)],
-        2: [Weapon("Basic Sword", "†", "hitting", damage=3)],
+        0: [Weapon("Basic Sword", "†", damage=random.randint(2, 6))],
+        1: [Weapon("Shuriken", "*", damage=random.randint(1, 4))],
+        #2: [Weapon("Boomerang", "¬", damage=random.randint(1,2))],
     }
 
     """ available monsters """
@@ -1838,8 +1832,8 @@ class Game(object):
                 1: [Creature("Ork", hp=6, strength=2, xp=10),
                     Creature("Blob", hp=10, xp=8),
                     Creature("Angel", hp=10, xp=4)],
-                3: [Creature("Poisonous spider", hp=5, xp=10, strength=0, abbreviation="&",
-                             powers_list=[[PoisonEffect, 2, 1]])],
+                2: [Creature("Poisonous spider", hp=5, xp=10, strength=0, abbreviation="&",
+                             powers_list=[[PoisonEffect, 3, 1]], cooldown=5)],
                 5: [Creature("Dragon", hp=20, strength=3, xp=50)],
                 20: [Creature("Death", hp=50, strength=3, xp=100, abbreviation='ñ')]
                 }
@@ -1861,8 +1855,8 @@ class Game(object):
                 ' ': lambda h: None,
                 'h': lambda hero: the_game().add_message("Actions available : " + str(list(Game._actions.keys()))),
                 't': lambda hero: hero.delete_item(
-                    the_game().select_item_to_del(hero._inventory) if len(hero._inventory) > 0 else False),
-                'b': lambda hero: hero.equip_weapon(the_game().select_weapon(hero._inventory)) if any(
+                    the_game().gv.select_from_inventory(Equipment) if len(hero._inventory) > 0 else False),
+                'b': lambda hero: hero.equip_weapon(the_game().gv.select_from_inventory(Equipment)) if any(
                     isinstance(elem, Weapon) for elem in hero._inventory) else the_game().add_message(
                     "You don't have any weapon in your inventory"),
                 'n': lambda hero: hero.remove_current_weapon(),
@@ -1875,9 +1869,9 @@ class Game(object):
                      'marchand': RoomObject('marchand', "€", usage=lambda: RoomObject.meet_trader()),
                      }
 
-    _specialRoomsList = {"finalBoss": Room(Coord(1, 1), Coord(19, 10), [monsters[20][0]]),
-                         'marchand': Room(Coord(15, 15), Coord(19, 19), [_room_objects['marchand']]),
-                         }
+    _special_rooms_list = {"finalBoss": Room(Coord(1, 1), Coord(19, 10), [monsters[20][0]]),
+                           'marchand': Room(Coord(15, 15), Coord(19, 19), [_room_objects['marchand']]),
+                           }
 
     sizeFactor = Map.sizeFactor
 
@@ -1888,7 +1882,7 @@ class Game(object):
         self._message = []
 
         if hero is None:
-            hero = Hero(strength=10000) # TODO : Remove the OP strength before giving it to the teacher
+            hero = Hero(strength=10000)  # TODO : Remove the OP strength before giving it to the teacher
         self.hero = hero
 
         self.nb_floors = nb_floors
@@ -1914,7 +1908,8 @@ class Game(object):
             print('Building Floor ' + str(i + 1) + '/' + str(self.nb_floors))
 
             if i == rand:
-                self.floor_list.append(Map(hero=self.hero, put_hero=place_hero, floor_number=i, special_room='marchand'))
+                self.floor_list.append(
+                    Map(hero=self.hero, put_hero=place_hero, floor_number=i, special_room='marchand'))
             elif i == self.nb_floors - 1:
                 self.floor_list.append(
                     Map(hero=self.hero, put_hero=place_hero, floor_number=i, special_room='finalBoss'))
@@ -1966,9 +1961,10 @@ class Game(object):
         self._message.clear()
         return renders.copy()
 
-    def rand_element(self, collect, floor_level):
+    @staticmethod
+    def rand_element(collect, floor_level):
         """Returns a clone of random element from a collection using exponential random law."""
-        x = random.expovariate(1 / (floor_level+1))
+        x = random.expovariate(1 / (floor_level + 1))
         for k in collect.keys():
             if k <= x:
                 element_list = collect[k]
@@ -2095,7 +2091,6 @@ class Game(object):
                 self.gv.draw_game_screen()
 
             pygame.display.update()
-        # running = False
 
         pygame.quit()
 
