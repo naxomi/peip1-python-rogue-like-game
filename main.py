@@ -5,7 +5,8 @@ import CasesGraphiques as CG
 import pygame
 
 
-# random.seed(2)
+# random.seed(123) THIS SEED RAISES AN ERROR
+random.seed(234)
 
 def _find_getch():
     """Single char input, only works only on mac/linux/windows OS terminals"""
@@ -411,7 +412,7 @@ class Hero(Creature):
 
     def check_inv_size(self):
         if len(self._inventory) > Hero.defaultInventorySize:
-            the_game().add_message("Inventory full.\nDelete an item to gain space")
+            the_game().add_message("Inventory full. Delete an item to gain space")
             return False
         return True
 
@@ -526,7 +527,7 @@ class Hero(Creature):
                             choice = "c"
 
                     if choice is not None:
-                        the_game().gv.inventoryOn = False
+                        the_game().gv.inventory_on = False
                         return Map.dir[choice]
 
     def throw_item(self, item, distance):
@@ -555,7 +556,9 @@ class Hero(Creature):
                 self.delete_item(item, True)
                 break
             elif isinstance(things_on_next_cell, Equipment):
-                if i != 0:
+                if i == 0:
+                    the_game().add_message("You can't throw the item in this direction")
+                else:
                     self.delete_item(item, True)
                 break
             elif things_on_next_cell != the_game().floor.ground:
@@ -570,7 +573,7 @@ class Hero(Creature):
                 else:
                     the_game().floor.move(item, direction)
             else:
-                raise NotImplementedError("WTF BRO")
+                raise NotImplementedError("Error might be due to an object not being managed.")
 
 
 class Effect(object):
@@ -650,7 +653,7 @@ class EphemeralEffect(Effect):
         if kill:
             self.info = f"[{self.creature.name}] has been killed by {self.name}<{self.level}>"
         else:
-            self.info = f"\n[{self.creature.name}] {self.name} effect disappeared"
+            self.info = f"[{self.creature.name}] {self.name} effect disappeared"
         super().deactivate()
 
 
@@ -1007,7 +1010,7 @@ class Map(object):
                 l.append(None)
             self.graphicElements.append(l)
 
-        self.putRoomObjects()
+        self.put_room_objects()
         if putHero:
             self.put(self._rooms[0].center(), hero)
             self.hero.x = self._rooms[0].center().x
@@ -1073,7 +1076,7 @@ class Map(object):
         while len(self._roomsToReach) > 0:
             self.reach()
 
-    def putRoomObjects(self):
+    def put_room_objects(self):
         for key in Game._room_objects:
             if key == "downstair" and self.floorNumber > 0:
                 r = random.choice(self._rooms)
@@ -1105,7 +1108,7 @@ class Map(object):
             return 0 <= item.x < len(self) and 0 <= item.y < len(self)
         return item in self._elem
 
-    def inGraphicMap(self, c):
+    def in_graphic_map(self, c):
         return 0 <= c.x < len(self.graphicMap) and 0 <= c.y < len(self.graphicMap)
 
     def __repr__(self):
@@ -1233,7 +1236,7 @@ class Map(object):
                             self.graphicElements[y][x] = elem.graphicOutput[state]
                         else:
                             self.graphicElements[y][x] = elem.graphicOutput[0]
-        the_game().gv.update_brouillard(self)
+        the_game().gv.update_fog(self)
 
 
 # TODO : Jaime wants to change something (qwerty / azerty)
@@ -1251,27 +1254,28 @@ class GraphicVariables(object):
 
         # Frames
         self.running = True
-        self.frameCount = 0
-        self.monsterState = 0
+        self.frame_count = 0
+        self.monster_state = 0
 
         self.stop = False
         self.choice = 0
-        self.choiceInv = 0
+        self.choice_inv = 0
         self.newRound = False
 
         # Messages
-        self.gameFont = None
-        self.menuFont = None
+        self.game_font = None
+        self.menu_font = None
         self._msg = []
 
         self.qwerty = False
 
-        self.optionsMenuStart = [("Menu", False), ("", False), ("New Game", True), ("Show Controls", True),
-                                 ("Choose Character", True), ("Exit Game", True)]
-        self.optionsMenu = [("Menu", False), ("", False), ("Resume Game", True), ("Show Controls", True),
-                            ("Choose Character", True), ("Exit Game", True)]
-        self.optionsHero = [("Characters", False), ("", False), ("Template", True), ("Rogue", True), ("Engineer", True),
-                            ("Warrior", True), ("Mage", True), ("Paladin", True)]
+        self.options_menu_start = [("Menu", False), ("", False), ("New Game", True), ("Show Controls", True),
+                                   ("Choose Character", True), ("Exit Game", True)]
+        self.options_menu = [("Menu", False), ("", False), ("Resume Game", True), ("Show Controls", True),
+                             ("Choose Character", True), ("Exit Game", True)]
+        self.options_hero = [("Characters", False), ("", False), ("Template", True), ("Rogue", True),
+                             ("Engineer", True),
+                             ("Warrior", True), ("Mage", True), ("Paladin", True)]
         self.options_controls = [
             ("i : open inventory", False),
             ("k : suicide", False),
@@ -1280,12 +1284,13 @@ class GraphicVariables(object):
             ("n : remove current weapon", False),
             ("", False),
             ("Return", True)]
-        self.optionsGameOver = [("-- Game Over --", False), ("", False), ("Exit Game", True)]
+
+        self.options_game_over = [("-- Game Over --", False), ("", False), ("Exit Game", True)]
 
         # Menu
-        self.menuOn = True
-        self.inventoryOn = False
-        self.list_menu = self.optionsMenuStart
+        self.menu_on = True
+        self.inventory_on = False
+        self.list_menu = self.options_menu_start
         self.colour_menu = (140, 140, 150)
 
         # Game Surfaces
@@ -1324,7 +1329,7 @@ class GraphicVariables(object):
         # Music effects
         self._songs = ['song-1.mp3', 'song-2.mp3', 'song-3.mp3']
 
-    def drawGUI(self, state):
+    def draw_gui(self, state):
         self.screen.fill((72, 62, 87), (self.width / 2, 0, self.width / 2, self.height))
 
         # Draw Character
@@ -1389,15 +1394,15 @@ class GraphicVariables(object):
                                  (self.width / 2 * (1 + 3 / 10) + 18 * (i - 1), self.height * 3 / 20 + 50))
 
         # Draw Hero Level
-        text = self.gameFont.render('Level: ' + str(self.hero.level), True, (0, 0, 0))
+        text = self.game_font.render('Level: ' + str(self.hero.level), True, (0, 0, 0))
         self.screen.blit(text, (self.width / 2 * (1 + 3 / 10), self.height * 3 / 20 - 30))
 
         # Draw gold
         self.screen.blit(self.dollar, (self.width / 2 * (1 + 3 / 10), self.height * 3 / 20 + 75))
-        text = self.gameFont.render(str(self.hero.gold), True, (0, 0, 0))
+        text = self.game_font.render(str(self.hero.gold), True, (0, 0, 0))
         self.screen.blit(text, (self.width / 2 * (1 + 3 / 10) + 30, self.height * 3 / 20 + 76))
 
-        # Inventaire
+        # Inventory
         sf = 2
         case = 16
 
@@ -1415,20 +1420,20 @@ class GraphicVariables(object):
                     image = self.hero._inventory[i].graphicOutput[1]
                 self.screen.blit(image, (self.width / 2 * (1 + 3 / 10) + case * i * sf, self.height * 7 / 20))
 
-        # Fleche Inventaire
-        if self.inventoryOn:
+        # Arrow Inventory
+        if self.inventory_on:
             if len(self.hero._inventory) != 0:
-                self.choiceInv = self.choiceInv % len(self.hero._inventory)
+                self.choice_inv %= len(self.hero._inventory)
             else:
-                self.choiceInv = 0
+                self.choice_inv = 0
             if sf != 2:
                 image = pygame.transform.scale(self.arrow, (16 * sf, 16 * sf))
             else:
                 image = self.arrow
             self.screen.blit(image, (
-                self.width / 2 * (1 + 3 / 10) + 7 + case * self.choiceInv * sf, self.height * 7 / 20 - 21))
+                self.width / 2 * (1 + 3 / 10) + 7 + case * self.choice_inv * sf, self.height * 7 / 20 - 21))
 
-    def drawMap(self):
+    def draw_map(self):
         self.screen.fill((80, 74, 85), (0, 0, self.width / 2, self.height))
         for y in range(self.height // Map.sizeFactor):
             for x in range(self.width // (2 * Map.sizeFactor)):
@@ -1442,12 +1447,12 @@ class GraphicVariables(object):
                 else:
                     self.screen.blit(self.fog, pos)
 
-    def drawElements(self, monsterState):
-        self.floor.updateElements(monsterState)
+    def draw_elements(self, monster_state):
+        self.floor.updateElements(monster_state)
         for y in range(len(self.floor.graphicElements)):
             for x in range(len(self.floor.graphicElements)):
                 case = self.floor.graphicElements[y][x]
-                if case != None and self.floor.graphicMap[y][x][1]:
+                if case is not None and self.floor.graphicMap[y][x][1]:
                     if isinstance(self.floor._mat[y][x], RoomObject):
                         if self.floor._mat[y][x].name == "upstair":
                             relief = 20
@@ -1459,7 +1464,7 @@ class GraphicVariables(object):
                                      (Map.sizeFactor * x + self.orig_x, Map.sizeFactor * y + self.orig_y - relief))
 
     # TODO : Create a function to manage messages that are too long
-    def drawMessage(self, time):
+    def draw_message(self, time):
         # Draw Message self.screen
         self.screen.fill((20, 12, 28), (
             (self.width / 2) * (1 + 1 / 8), self.height * 3 / 4, (self.width / 2) * 6 / 8, self.height / 5))
@@ -1468,21 +1473,21 @@ class GraphicVariables(object):
             (self.width / 2) * (1 + 1 / 8) + b, self.height * 3 / 4 + b, (self.width / 2) * 6 / 8 - 2 * b,
             self.height / 5 - 2 * b))
 
-        newmsg = the_game().read_messages()
-        nblines = len(self._msg)
-        msgNuls = []
-        for k in newmsg:
+        new_msg = the_game().read_messages()
+        nb_lines = len(self._msg)
+        msg_nuls = []
+        for k in new_msg:
             self._msg.append([k, time])
             if len(self._msg) > 5:
                 self._msg.pop(0)
-        for i in range(nblines):
+        for i in range(nb_lines):
             self.screen.blit(self._msg[i][0],
                              ((self.width / 2) * (1 + 1 / 8) + 15, self.height * 3 / 4 + 5 + 20 * i + 10))
             self._msg[i][1] -= 1
             if self._msg[i][1] <= 0:
-                msgNuls.append(i)
+                msg_nuls.append(i)
 
-        for j in msgNuls:
+        for j in msg_nuls:
             if j < len(self._msg):
                 self._msg.pop(j)
 
@@ -1492,7 +1497,7 @@ class GraphicVariables(object):
         self.screen.fill(colour,
                          (self.width / 4 + b, self.height / 4 + b, self.width / 2 - 2 * b, self.height / 2 - 2 * b))
 
-        self.choice = self.choice % len(list_menu)
+        self.choice %= len(list_menu)
         size = 40
 
         for i in range(len(list_menu)):
@@ -1510,12 +1515,12 @@ class GraphicVariables(object):
             else:
                 objet = list_menu[i][0]
 
-            text = self.menuFont.render(f + objet, True, (0, 0, 0))
+            text = self.menu_font.render(f + objet, True, (0, 0, 0))
             text_rect = text.get_rect(center=(self.width / 2, self.height / 4 + (i + 1) * size))
             self.screen.blit(text, text_rect)
 
     def draw_marchand(self, list_objects):
-        lm = [('Que voulez vous acheter ?', False), ('', False)]
+        lm = [('Do you want something ?', False), ('', False)]
 
         for o in list_objects:
             lm.append((o, True))
@@ -1523,7 +1528,7 @@ class GraphicVariables(object):
 
         self.list_menu = lm
         self.colour_menu = (30, 212, 157)
-        self.menuOn = True
+        self.menu_on = True
 
     def draw_hero_move(self):
         h = self.hero
@@ -1581,7 +1586,7 @@ class GraphicVariables(object):
             elif isinstance(elem_in_way, Creature):
                 self.floor.move(h, way)
                 self.newRound = True
-                # pos = Coord(h.x+way.x,h.y+way.y)
+
                 for i in range(6):
                     self.screen.blit(self.explosion[i], (
                         sf * (h.x + way.x) + self.orig_x - 12, sf * (h.y + way.y) + self.orig_y + persp - 12))
@@ -1597,6 +1602,7 @@ class GraphicVariables(object):
 
     def player_plays(self, event):
         do = False
+        keydown_bool = False
 
         if event.type == pygame.KEYDOWN:
             keydown_bool = True
@@ -1605,7 +1611,7 @@ class GraphicVariables(object):
             keydown_bool = False
             do = True
 
-        # Mouvement
+        # Movement
         if do:
 
             if keydown_bool or self.hero.state == 0:
@@ -1650,7 +1656,7 @@ class GraphicVariables(object):
         if event.key == pygame.K_k:
             Game._actions['k'](self.hero)
         elif event.key == pygame.K_i:
-            self.inventoryOn = not self.inventoryOn
+            self.inventory_on = not self.inventory_on
         elif event.key == pygame.K_b:
             Game._actions['b'](self.hero)
         elif event.key == pygame.K_n:
@@ -1673,91 +1679,92 @@ class GraphicVariables(object):
             this_choice = self.list_menu[self.choice][0]
 
             if this_choice == "New Game":
-                self.menuOn = not self.menuOn
-                self.list_menu = self.optionsMenu
+                self.menu_on = not self.menu_on
+                self.list_menu = self.options_menu
 
             elif this_choice == "Resume Game" or this_choice == 'Maybe Later':
-                self.menuOn = not self.menuOn
+                self.menu_on = not self.menu_on
 
             elif this_choice == "Exit Game":
                 self.running = False
 
             elif this_choice == "Choose Character":
-                self.list_menu = self.optionsHero
+                self.list_menu = self.options_hero
                 self.choice = 0
 
-            elif self.list_menu[self.choice] in self.optionsHero:
+            elif self.list_menu[self.choice] in self.options_hero:
                 self.change_hero_appearance(this_choice)
                 self.choice = 0
-                self.list_menu = self.optionsMenu
+                self.list_menu = self.options_menu
 
             elif this_choice == "Show Controls":
                 self.list_menu = self.options_controls
 
             elif this_choice == "Return":
-                self.list_menu = self.optionsMenu
+                self.list_menu = self.options_menu
 
             # Marchand
 
             elif isinstance(this_choice, Equipment):
                 self.hero.buy(this_choice)
-                self.menuOn = False
+                self.menu_on = False
 
     def choose_in_inventory(self, event):
 
         if self.qwerty:
             if event.key == pygame.K_a:
-                self.choiceInv -= 1
+                self.choice_inv -= 1
             elif event.key == pygame.K_d:
-                self.choiceInv += 1
+                self.choice_inv += 1
 
         else:
             if event.key == pygame.K_q:
-                self.choiceInv -= 1
+                self.choice_inv -= 1
             elif event.key == pygame.K_d:
-                self.choiceInv += 1
+                self.choice_inv += 1
 
         # Use equipment
         if event.key == pygame.K_RETURN or event.key == pygame.K_u:
             Game._actions['u'](self.hero)
-            self.inventoryOn = False
+            self.inventory_on = False
 
         elif event.key == pygame.K_t:
             Game._actions["t"](self.hero)
-            self.inventoryOn = False
+            self.inventory_on = False
 
         elif event.key == pygame.K_b:
             Game._actions["b"](self.hero)
-            self.inventoryOn = False
+            self.inventory_on = False
 
         elif event.key == pygame.K_n:
             Game._actions["n"](self.hero)
-            self.inventoryOn = False
+            self.inventory_on = False
 
         elif event.key == pygame.K_i:
-            self.inventoryOn = True
+            self.inventory_on = True
 
         elif event.key == pygame.K_l:
             Game._actions['l'](self.hero)
 
-        self.floor.updateElements(self.monsterState)
+        self.floor.updateElements(self.monster_state)
 
     def change_hero_appearance(self, costume):
         images = CG.get_hero_image(costume)
         self.hero.graphicOutput = images[0]
         self.hero.animationUDLR = [images[12:16], images[:4], images[4:8], images[8:12]]
 
-    def select_from_inventory(self, classe):
-        if self.choiceInv < len(self.hero._inventory) and isinstance(self.hero._inventory[self.choiceInv], classe):
-            return self.hero._inventory[self.choiceInv]
+    def select_from_inventory(self, item_chosen_class):
+        if self.choice_inv < len(self.hero._inventory) and isinstance(self.hero._inventory[self.choice_inv],
+                                                                      item_chosen_class):
+            return self.hero._inventory[self.choice_inv]
         return None
 
     def draw_game_screen(self):
-        self.drawMap()
-        self.drawElements(self.monsterState)
+        self.draw_map()
+        self.draw_elements(self.monster_state)
         self.draw_hero_move()
 
-    def update_brouillard(self, map):
+    def update_fog(self, map):
         for o in [map.hero, Game.monsters[20][0]]:
             if isinstance(o, Hero):
                 x = self.hero.x
@@ -1774,7 +1781,7 @@ class GraphicVariables(object):
             for i in range(-radius, radius + 1):
                 for j in range(-radius, radius + 1):
                     c = Coord(x + i, y + j)
-                    if self.floor is not None and self.floor.inGraphicMap(c):
+                    if self.floor is not None and self.floor.in_graphic_map(c):
                         if Coord(x, y).distance(c) <= radius:
                             self.floor.graphicMap[y + j][x + i][1] = True
 
@@ -1817,7 +1824,7 @@ class Game(object):
         1: [Weapon("Basic Sword", "†", "hitting", usage=None, damage=3, durability=10)],
         # 0: [Weapon("Basic Sword", "†", "hitting", usage=None, damage=3, durability=10)],
         # 1: [Weapon("Shuriken", "*", "hitting", usage=lambda self, hero: Weapon.hit)],
-        2: [],
+        2: [Weapon("Basic Sword", "†", "hitting", usage=None, damage=3, durability=10)],
     }
 
     """ available monsters """
@@ -1861,7 +1868,7 @@ class Game(object):
 
     _room_objects = {'upstair': RoomObject('upstair', "^", usage=lambda: RoomObject.go_upstairs()),
                      'downstair': RoomObject('downstair', "v", usage=lambda: RoomObject.go_downstairs()),
-                    'marchand': RoomObject('marchand', "€", usage=lambda: RoomObject.meet_trader()),
+                     'marchand': RoomObject('marchand', "€", usage=lambda: RoomObject.meet_trader()),
                      }
 
     _specialRoomsList = {"finalBoss": Room(Coord(1, 1), Coord(19, 10), [monsters[20][0]]),
@@ -1913,21 +1920,45 @@ class Game(object):
 
         self.gv.floor = self.floor = self.floorList[self.actualFloor]
 
+    @staticmethod
+    def rearrange_sentences(text_message, length_max=50):
+        text_message_list = text_message.split(" ")
+
+        res = []
+        word_to_add = ""
+
+        while len(text_message_list) != 0:
+
+            if len(text_message_list[0]) > length_max:
+                res.append(text_message_list[0][:length_max])
+                word_to_recount = text_message_list[0][length_max + 1:]
+                text_message_list.pop(0)
+                word_to_add = word_to_recount + " " + word_to_add
+
+            if len(word_to_add + text_message_list[0]) <= length_max:
+                word_to_add += text_message_list.pop(0) + " "
+                if len(text_message_list) == 0:
+                    res.append(word_to_add)
+            else:
+                res.append(word_to_add)
+                word_to_add = ""
+
+        return res
+
+    # TODO : Redo this function
     def add_message(self, msg):
         """Adds a message in the message list."""
-        if '\n' in msg:
-            l = msg.split('\n')
-            for m in l:
-                self._message.append(m)
 
-        else:
-            self._message.append(msg)
+        # SCREEN SIZE LIMIT = 32 characters
+        line_list = Game.rearrange_sentences(msg)
+        for line_text in line_list:
+            self._message.append(line_text)
 
     def read_messages(self):
         """Returns the message list and clears it."""
         renders = []
         for m in self._message:
-            renders.append(self.gv.gameFont.render(m, True, (0, 0, 0)))
+            renders.append(self.gv.game_font.render(m, True, (0, 0, 0)))
 
         self._message.clear()
         return renders.copy()
@@ -1971,31 +2002,31 @@ class Game(object):
         self.gv.screen = pygame.display.set_mode((width, height))
 
         # Title and Icon
-        pygame.display.set_caption("Rogue: Jaime et Raphaël")
+        pygame.display.set_caption("Rogue: Jaime et Raphael")
         icon = pygame.image.load("images/magicsword.png")
         pygame.display.set_icon(icon)
 
         # Font
-        self.gv.gameFont = pygame.font.SysFont('font1.ttf', 30)
-        self.gv.menuFont = pygame.font.SysFont('papyrus', 40)
+        self.gv.game_font = pygame.font.SysFont('Agencyfc', 30)
+        self.gv.menu_font = pygame.font.SysFont('papyrus', 40)
 
         # Music
-        SONG_END = pygame.USEREVENT + 1
-        pygame.mixer.music.set_endevent(SONG_END)
+        song_end = pygame.USEREVENT + 1
+        pygame.mixer.music.set_endevent(song_end)
         self.gv.play_next_song()
 
         # Initialize Brouillard
-        self.gv.update_brouillard(self.floor)
+        self.gv.update_fog(self.floor)
 
         while self.gv.running:
 
             # pygame.time.Clock().tick()
             pygame.time.delay(50)
 
-            if self.gv.frameCount > 10:
-                self.gv.monsterState = opp(self.gv.monsterState)
-                self.gv.frameCount = 0
-            self.gv.frameCount += 1
+            if self.gv.frame_count > 10:
+                self.gv.monster_state = opp(self.gv.monster_state)
+                self.gv.frame_count = 0
+            self.gv.frame_count += 1
 
             # Events
             for event in pygame.event.get():
@@ -2003,42 +2034,39 @@ class Game(object):
                 if event.type == pygame.QUIT:
                     self.gv.running = False
 
-                elif event.type == SONG_END:
+                elif event.type == song_end:
                     self.gv.play_next_song()
 
                 elif event.type == pygame.KEYDOWN:
-                    # for key in self.input_dictionary:
-                    #     if event.key == exec(f"pygame.K_{key}"):
-                    #         self.input_dictionary[key] = True
 
                     if event.key == pygame.K_ESCAPE:
-                        self.gv.menuOn = not self.gv.menuOn
-                        self.gv.list_menu = self.gv.optionsMenu
+                        self.gv.menu_on = not self.gv.menu_on
+                        self.gv.list_menu = self.gv.options_menu
                         self.gv.colour_menu = (140, 140, 150)
 
-                        self.gv.inventoryOn = False
+                        self.gv.inventory_on = False
 
-                    if self.gv.menuOn:
+                    if self.gv.menu_on:
                         self.gv.choose_in_menu(event)
 
-                    if self.gv.inventoryOn:
+                    if self.gv.inventory_on:
                         self.gv.choose_in_inventory(event)
 
-                if not self.gv.inventoryOn:
+                if not self.gv.inventory_on:
                     self.gv.player_plays(event)
 
             # Menu
-            if self.gv.menuOn:
+            if self.gv.menu_on:
                 self.gv.draw_menu(self.gv.list_menu, self.gv.colour_menu)
 
             else:
                 # Background
-                self.gv.drawGUI(self.gv.monsterState)
+                self.gv.draw_gui(self.gv.monster_state)
 
                 if self.hero.hp <= 0:
                     # self.hero.hp = 1
-                    self.gv.list_menu = self.gv.optionsGameOver
-                    self.gv.menuOn = True
+                    self.gv.list_menu = self.gv.options_game_over
+                    self.gv.menu_on = True
 
                 self.hero.check_inventory_size()
 
@@ -2063,7 +2091,7 @@ class Game(object):
                     self.applyEffectsBool = False
 
                 # Messages
-                self.gv.drawMessage(200)
+                self.gv.draw_message(200)
 
                 self.gv.draw_game_screen()
 
