@@ -260,7 +260,7 @@ class Creature(Element):
             for effect_infos_list in other.powers_list:
                 if other.cooldown == 0:  # The cooldown ended
                     effect_infos_list[0].add_effect(
-                        effect_infos_list[0](the_game(), self, effect_infos_list[1], effect_infos_list[2]))
+                        effect_infos_list[0](self, effect_infos_list[1], effect_infos_list[2]))
                     other.cooldown = other._default_cooldown
                 else:
                     other.cooldown -= 1
@@ -298,6 +298,22 @@ class Creature(Element):
             return self.weapon_slot[0]
         else:
             return False
+
+    def has_an_hitting_weapon(self):
+        if self.current_weapon().weaponType == Weapon._weapon_type_list[0]:
+            return True
+
+    def has_a_throwing_weapon(self):
+        if self.current_weapon().weaponType == Weapon._weapon_type_list[1]:
+            return True
+
+    def has_a_projectile_weapon(self):
+        if self.current_weapon().weaponType == Weapon._weapon_type_list[2]:
+            return True
+
+
+# def applyStuffEffects(self):
+#     return
 
 
 class Hero(Creature):
@@ -569,14 +585,16 @@ class Hero(Creature):
 
 class Effect(object):
 
-    def __init__(self, game, creature):
-        self.game = game
+    def __init__(self, creature):
+        self.game = the_game()
         self.creature = creature
-        self.name = ""
         self.value = 0
         self.info = ""
         self.duration = None
         self.level = 0
+
+        image = CG.get_image('Effects/' + self.name + '.png')  # change
+        self.graphicOutput = pygame.transform.scale(image, (32, 32))
 
     def delete(self):
         try:
@@ -611,10 +629,11 @@ class Effect(object):
         self.game.add_message(self.info)
         self.delete()
 
-    def clear(self, unique=True):
+    @staticmethod
+    def clear(unique=True):
         effects_to_delete = []
-        for effect in self.game.active_effects:
-            if effect.creature is self.creature:
+        for effect in the_game().active_effects:
+            if effect.creature is the_game().hero:
                 effects_to_delete.append(effect)
 
         for effect in effects_to_delete:
@@ -625,8 +644,8 @@ class Effect(object):
 
 class EphemeralEffect(Effect):
 
-    def __init__(self, game, creature, duration, level):
-        super().__init__(game, creature)
+    def __init__(self, creature, duration, level):
+        super().__init__(creature)
         self.duration = duration
         self.level = level
 
@@ -653,9 +672,9 @@ class HealEffect(EphemeralEffect):
     LEVEL_FACTOR = 1
     DESCRIPTION = "Recovering hp : +"
 
-    def __init__(self, game, creature, duration, level):
-        super().__init__(game, creature, duration, level)
+    def __init__(self, creature, duration, level):
         self.name = "Heal"
+        super().__init__(creature, duration, level)
         self.value = self.level * HealEffect.LEVEL_FACTOR
 
     def action(self):
@@ -674,9 +693,9 @@ class PoisonEffect(EphemeralEffect):
     LEVEL_FACTOR = 1
     DESCRIPTION = "Losing hp : -"
 
-    def __init__(self, game, creature, duration, level):
-        super().__init__(game, creature, duration, level)
+    def __init__(self, creature, duration, level):
         self.name = "Poison"
+        super().__init__(creature, duration, level)
         self.value = self.level * PoisonEffect.LEVEL_FACTOR
 
     def action(self):
@@ -684,7 +703,7 @@ class PoisonEffect(EphemeralEffect):
         self.info = f"[{self.creature.name}] | {self.name}<{self.level}> | {PoisonEffect.DESCRIPTION}{self.value}"
 
         if self.creature.hp == 0:
-            self.game.floor.rm(self.game.floor.pos(self.creature))
+            the_game().floor.rm(the_game().floor.pos(self.creature))
             super().deactivate(True)
         else:
             super().action()
@@ -697,13 +716,13 @@ class FeedEffect(EphemeralEffect):
     LEVEL_FACTOR = 1
     DESCRIPTION = "I'm eating : +"
 
-    def __init__(self, game, creature, duration, level):
+    def __init__(self, creature, duration, level):
 
         if not isinstance(creature, Hero):
             raise TypeError("The creature for this effect must be a hero.")
 
-        super().__init__(game, creature, duration, level)
         self.name = "Feed"
+        super().__init__(creature, duration, level)
         self.value = self.level * FeedEffect.LEVEL_FACTOR
 
     def action(self) -> None:
@@ -722,9 +741,9 @@ class HungerEffect(EphemeralEffect):
     LEVEL_FACTOR = 1
     DESCRIPTION = "I'm hungry : -"
 
-    def __init__(self, game, creature, duration, level):
-        super().__init__(game, creature, duration, level)
+    def __init__(self, creature, duration, level):
         self.name = "Hunger"
+        super().__init__(creature, duration, level)
         self.value = self.level * HungerEffect.LEVEL_FACTOR
 
     def action(self):
@@ -738,19 +757,19 @@ class TeleportEffect(EphemeralEffect):  # IS AN INSTANT EFFECT
 
     DESCRIPTION = "You have been teleported"
 
-    def __init__(self, game, creature, duration=1):
-        super().__init__(game, creature, duration, 0)
+    def __init__(self, creature, duration=1):
         self.name = "Teleportation"
+        super().__init__(creature, duration, 0)
 
     def action(self):
         """Teleport the creature"""
-        r = self.game.floor.rand_room()
+        r = the_game().floor.rand_room()
         c = r.rand_coord()
 
-        while not self.game.floor.get(c) == Map.ground:
+        while not the_game().floor.get(c) == Map.ground:
             c = r.rand_coord()
-        self.game.floor.rm(self.game.floor.pos(self.creature))
-        self.game.floor.put(c, self.creature)
+        the_game().floor.rm(the_game().floor.pos(self.creature))
+        the_game().floor.put(c, self.creature)
 
         self.info = f"The creature <{self.creature.name}> has been teleported"
 
@@ -759,16 +778,14 @@ class TeleportEffect(EphemeralEffect):  # IS AN INSTANT EFFECT
 
 class ConstantEffect(Effect):
 
-    def __init__(self, game, creature):
-        super().__init__(game, creature)
+    def __init__(self, creature):
+        super().__init__(creature)
         self.has_been_activated = False
 
     def activate(self, unique=True):
         if not self.has_been_activated:
             super().activate()
             self.has_been_activated = True
-
-        super().update()
 
         return unique
 
@@ -782,9 +799,9 @@ class StrengthEffect(ConstantEffect):
     DESCRIPTION_ACTIVATE = "I feel stronger : +"
     DESCRIPTION_DEACTIVATE = "<End of boost> I feel weaker : -"
 
-    def __init__(self, game, creature, duration=None, level=1):
-        super().__init__(game, creature)
+    def __init__(self, creature, duration=None, level=1):
         self.name = "Strength"
+        super().__init__(creature)
         self.duration = duration
         self.level = level
         self.value = self.level * StrengthEffect.LEVEL_FACTOR
@@ -812,9 +829,9 @@ class WeaknessEffect(ConstantEffect):
     DESCRIPTION_ACTIVATE = "I feel weaker : -"
     DESCRIPTION_DEACTIVATE = "<End of malus> I feel stronger : +"
 
-    def __init__(self, game, creature, duration=None, level=1):
-        super().__init__(game, creature)
+    def __init__(self, creature, duration=None, level=1):
         self.name = "Weakness"
+        super().__init__(creature)
         self.duration = duration
         self.level = level
         self.value = self.level * WeaknessEffect.LEVEL_FACTOR
@@ -841,9 +858,10 @@ class WeaknessEffect(ConstantEffect):
 class Equipment(Element):
     """A piece of equipment"""
 
-    def __init__(self, name, abbreviation="", usage=None, price=1):
+    def __init__(self, name, abbreviation="", usage=None, durability=None, price=1):
         Element.__init__(self, name, abbreviation)
         self.usage = usage
+        self.durability = durability
         self.price = price
 
         # GRAPHICS
@@ -1378,6 +1396,12 @@ class GraphicVariables(object):
         text = self.game_font.render(str(self.hero.gold), True, (0, 0, 0))
         self.screen.blit(text, (hero_drawing_x + h_d_width + 30, self.height * 3 / 20 + 76))
 
+        # Effects
+        for i, x in enumerate(the_game().active_effects):
+            if x.creature == self.hero:
+                hero_drawing_x
+                self.screen.blit(x.graphicOutput, (hero_drawing_x + h_d_width + 32 * i, self.height * 3 / 20 + 100))
+
         # Inventory
         sf = 2
         case = 16
@@ -1422,6 +1446,14 @@ class GraphicVariables(object):
                     self.screen.blit(self.floor.graphic_map[y][x][0], pos)
                 else:
                     self.screen.blit(self.fog, pos)
+
+        # Draw Map level
+        string = 'Floor level: ' + str(the_game().floor_list[the_game().actual_floor].floor_number + 1)
+        text = self.game_font.render(string, True, (0, 0, 0))
+
+        text_width, text_height = self.game_font.size(string)
+        self.screen.fill((72, 62, 87), (45, self.orig_y / 3 - 5, text_width + 10, text_height + 10))
+        self.screen.blit(text, (50, self.orig_y / 3))
 
     def draw_elements(self, monster_state):
         self.floor.update_elements(monster_state)
@@ -1593,33 +1625,53 @@ class GraphicVariables(object):
             if keydown_bool or self.hero.state == 0:
                 self.hero.moving_UDLR = [False] * 8
 
-                if self.qwerty:
-                    if event.key == pygame.K_w:
+                if self.qwerty:  # change
+                    if event.key == pygame.K_w:  # UP
                         self.hero.moving_UDLR[0] = keydown_bool
-                    elif event.key == pygame.K_a:
+                    if event.key == pygame.K_x:  # DOWN
+                        self.hero.moving_UDLR[1] = keydown_bool
+                    elif event.key == pygame.K_a:  # LEFT
                         self.hero.moving_UDLR[2] = keydown_bool
-                    elif event.key == pygame.K_q:
+                    elif event.key == pygame.K_d:  # RIGHT
+                        self.hero.moving_UDLR[3] = keydown_bool
+
+                    # Diagonales
+                    elif event.key == pygame.K_q:  # UP LEFT
                         self.hero.moving_UDLR[4] = keydown_bool
-                    elif event.key == pygame.K_z:
+                    elif event.key == pygame.K_e:  # UP RIGHT
+                        self.hero.moving_UDLR[5] = keydown_bool
+                    elif event.key == pygame.K_c:  # DOWN RIGHT
+                        self.hero.moving_UDLR[6] = keydown_bool
+                    elif event.key == pygame.K_z:  # DOWN LEFT
                         self.hero.moving_UDLR[7] = keydown_bool
                 else:
-                    if event.key == pygame.K_z:
+                    if event.key == pygame.K_z:  # UP
                         self.hero.moving_UDLR[0] = keydown_bool
-                    elif event.key == pygame.K_q:
+                    if event.key == pygame.K_x:  # DOWN
+                        self.hero.moving_UDLR[1] = keydown_bool
+                    elif event.key == pygame.K_q:  # LEFT
                         self.hero.moving_UDLR[2] = keydown_bool
-                    elif event.key == pygame.K_a:
+                    elif event.key == pygame.K_d:  # RIGHT
+                        self.hero.moving_UDLR[3] = keydown_bool
+
+                    # Diagonales
+                    elif event.key == pygame.K_a:  # UP LEFT
                         self.hero.moving_UDLR[4] = keydown_bool
-                    elif event.key == pygame.K_w:
+                    elif event.key == pygame.K_e:  # UP RIGHT
+                        self.hero.moving_UDLR[5] = keydown_bool
+                    elif event.key == pygame.K_c:  # DOWN RIGHT
+                        self.hero.moving_UDLR[6] = keydown_bool
+                    elif event.key == pygame.K_w:  # DOWN LEFT
                         self.hero.moving_UDLR[7] = keydown_bool
 
-                if event.key == pygame.K_x:
+                if event.key == pygame.K_UP:  # UP
+                    self.hero.moving_UDLR[0] = keydown_bool
+                elif event.key == pygame.K_DOWN or event.key == pygame.K_s:  # DOWN
                     self.hero.moving_UDLR[1] = keydown_bool
-                elif event.key == pygame.K_d:
+                elif event.key == pygame.K_LEFT:  # LEFT
+                    self.hero.moving_UDLR[2] = keydown_bool
+                elif event.key == pygame.K_RIGHT:  # RIGHT
                     self.hero.moving_UDLR[3] = keydown_bool
-                elif event.key == pygame.K_e:
-                    self.hero.moving_UDLR[5] = keydown_bool
-                elif event.key == pygame.K_c:
-                    self.hero.moving_UDLR[6] = keydown_bool
 
                 # Actions
                 if keydown_bool:
@@ -1649,6 +1701,11 @@ class GraphicVariables(object):
                 self.choice -= 1
             elif event.key == pygame.K_s:
                 self.choice += 1
+
+        if event.key == pygame.K_UP:  # changes
+            self.choice -= 1
+        elif event.key == pygame.K_DOWN:
+            self.choice += 1
 
         if event.key == pygame.K_RETURN:
 
@@ -1681,7 +1738,7 @@ class GraphicVariables(object):
                 self.list_menu = self.options_menu
 
             elif this_choice == "Preferences":
-                self.list_men = self.options_preferences
+                self.list_menu = self.options_preferences
 
 
             elif this_choice == "Set Qwerty":
@@ -1714,6 +1771,11 @@ class GraphicVariables(object):
             elif event.key == pygame.K_d:
                 self.choice_inv += 1
 
+        if event.key == pygame.K_LEFT:  # change
+            self.choice_inv -= 1
+        elif event.key == pygame.K_RIGHT:
+            self.choice_inv += 1
+
         # Use equipment
         if event.key == pygame.K_RETURN or event.key == pygame.K_u:
             Game._actions['u'](self.hero)
@@ -1731,11 +1793,14 @@ class GraphicVariables(object):
             Game._actions["n"](self.hero)
             self.inventory_on = False
 
-        elif event.key == pygame.K_i:
+        elif event.key == pygame.K_i:  # change
             self.inventory_on = True
 
         elif event.key == pygame.K_l:
             Game._actions['l'](self.hero)
+
+        elif event.key == pygame.K_i:
+            self.inventory_on = not self.inventory_on
 
         self.floor.update_elements(self.monster_state)
 
@@ -1789,32 +1854,32 @@ class Game(object):
     """ available equipments """
     equipments = {0: [Equipment("gold", "o"),
                       Equipment("basic bread", "§", usage=lambda self, hero: FeedEffect.activate(
-                          FeedEffect(the_game(), hero, 1, hero.default_stomach_size))),
+                          FeedEffect(hero, 1, hero.default_stomach_size))),
                       Equipment("hunger mushroom", "£",
-                                usage=lambda self, hero: HungerEffect.activate(HungerEffect(the_game(), hero, 3, 1))),
+                                usage=lambda self, hero: HungerEffect.activate(HungerEffect(hero, 3, 1))),
                       Equipment("poisonous mushroom", "%",
-                                usage=lambda self, hero: PoisonEffect.activate(PoisonEffect(the_game(), hero, 3, 1))),
+                                usage=lambda self, hero: PoisonEffect.activate(PoisonEffect(hero, 3, 1))),
                       ],
                   1: [Equipment("strength potion", "!",
                                 usage=lambda self, hero: StrengthEffect.activate(
-                                    StrengthEffect(the_game(), hero, 10, 3))),
+                                    StrengthEffect(hero, 10, 3))),
                       Equipment("weakness potion", "!",
-                                usage=lambda self, hero: WeaknessEffect.activate(WeaknessEffect(the_game(), hero, 10))),
+                                usage=lambda self, hero: WeaknessEffect.activate(WeaknessEffect(hero, 10))),
                       Equipment("teleport potion", "!",
-                                usage=lambda self, hero: TeleportEffect.activate(TeleportEffect(the_game(), hero))),
+                                usage=lambda self, hero: TeleportEffect.activate(TeleportEffect(hero))),
                       Equipment("healing potion", "!",
-                                usage=lambda self, hero: HealEffect.activate(HealEffect(the_game(), hero, 1, 3))),
+                                usage=lambda self, hero: HealEffect.activate(HealEffect(hero, 1, 3))),
                       ],
-                  2: [Equipment("milk", "m", usage=lambda self, hero: Effect.clear(Effect(the_game(), hero))),
+                  2: [Equipment("milk", "m", usage=lambda self, hero: Effect.clear()),
                       ],
                   3: [Equipment("portoloin", "w",
-                                usage=lambda self, hero: TeleportEffect.activate(TeleportEffect(the_game(), hero),
+                                usage=lambda self, hero: TeleportEffect.activate(TeleportEffect(hero),
                                                                                  False)),
                       Equipment("healing potion", "!",
-                                usage=lambda self, hero: HealEffect.activate(HealEffect(the_game(), hero, 1, 6))),
+                                usage=lambda self, hero: HealEffect.activate(HealEffect(hero, 1, 6))),
                       Equipment("strength potion", "!",
                                 usage=lambda self, hero: StrengthEffect.activate(
-                                    StrengthEffect(the_game(), hero, 10, 10))),
+                                    StrengthEffect(hero, 10, 10))),
                       ],
                   }
 
