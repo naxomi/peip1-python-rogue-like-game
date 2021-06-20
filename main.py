@@ -754,12 +754,10 @@ class FeedEffect(EphemeralEffect):
 
     def __init__(self, creature, duration, level):
 
-        if not isinstance(creature, Hero):
-            raise TypeError("The creature for this effect must be a hero.")
-
-        self.name = "Feed"
-        super().__init__(creature, duration, level)
-        self.value = self.level * FeedEffect.LEVEL_FACTOR
+        if isinstance(creature, Hero):
+            self.name = "Feed"
+            super().__init__(creature, duration, level)
+            self.value = self.level * FeedEffect.LEVEL_FACTOR
 
     def action(self) -> None:
         if self.creature.default_stomach_size > self.creature.stomach + self.value:
@@ -778,9 +776,10 @@ class HungerEffect(EphemeralEffect):
     DESCRIPTION = "I'm hungry : -"
 
     def __init__(self, creature, duration, level):
-        self.name = "Hunger"
-        super().__init__(creature, duration, level)
-        self.value = self.level * HungerEffect.LEVEL_FACTOR
+        if isinstance(creature, Hero):
+            self.name = "Hunger"
+            super().__init__(creature, duration, level)
+            self.value = self.level * HungerEffect.LEVEL_FACTOR
 
     def action(self):
         if isinstance(self.creature, Hero):
@@ -1521,10 +1520,10 @@ class GraphicVariables(object):
                 self._msg.pop(j)
 
     def draw_menu(self, list_menu, colour=(140, 140, 150)):
-        self.screen.fill((255, 255, 51), (self.width / 4, self.height / 4, self.width / 2, self.height / 2))
+        self.screen.fill((255, 255, 51), (self.width / 4, self.height / 6, self.width / 2, self.height * 4 / 6))
         b = 5
         self.screen.fill(colour,
-                         (self.width / 4 + b, self.height / 4 + b, self.width / 2 - 2 * b, self.height / 2 - 2 * b))
+                         (self.width / 4 + b, self.height / 6 + b, self.width / 2 - 2 * b, self.height * 4 / 6 - 2 * b))
 
         self.choice %= len(list_menu)
 
