@@ -201,12 +201,12 @@ def generate_graphic_map(floor):
     e = floor.empty
     g = floor.ground
 
-    if not floor.graphicMap:
+    if not floor.graphic_map:
         for y in range(len(m) + 1):
-            floor.graphicMap.append([[None, False]] * (len(m) + 1))
+            floor.graphic_map.append([[None, False]] * (len(m) + 1))
 
-    for y in range(len(floor.graphicMap)):
-        for x in range(len(floor.graphicMap[y])):
+    for y in range(len(floor.graphic_map)):
+        for x in range(len(floor.graphic_map[y])):
 
             try:
                 elem = floor.get_without_coord(x, y)
@@ -234,7 +234,7 @@ def generate_graphic_map(floor):
                 right = e
 
             if elem == g:
-                floor.graphicMap[y][x] = [cases_ground((up, down, left, right), floor), False]
+                floor.graphic_map[y][x] = [cases_ground((up, down, left, right), floor), False]
 
             else:
 
@@ -261,17 +261,17 @@ def generate_graphic_map(floor):
                 cells_around = (up_left, up, up_right, left, right, down_left, down, down_right)
 
                 if cases_empty_vertex(cells_around, floor):
-                    floor.graphicMap[y][x] = [cases_empty_vertex(cells_around, floor), False]
+                    floor.graphic_map[y][x] = [cases_empty_vertex(cells_around, floor), False]
 
                 elif cases_empty((up, down, left, right), floor):
-                    floor.graphicMap[y][x] = [cases_empty((up, down, left, right), floor), False]
+                    floor.graphic_map[y][x] = [cases_empty((up, down, left, right), floor), False]
 
                 elif cases_empty_vertex((up_left, up_right, down_right, down_left), floor):
-                    floor.graphicMap[y][x] = [cases_empty_vertex((up_left, up_right, down_right, down_left), floor),
-                                              False]
+                    floor.graphic_map[y][x] = [cases_empty_vertex((up_left, up_right, down_right, down_left), floor),
+                                               False]
 
                 else:
-                    floor.graphicMap[y][x] = [cases_empty_vertex(0, floor), False]
+                    floor.graphic_map[y][x] = [cases_empty_vertex(0, floor), False]
 
 
 def get_hero_image(key):

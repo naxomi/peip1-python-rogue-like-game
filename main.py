@@ -132,7 +132,6 @@ class RoomObject(Element):
         self.usage = usage
 
         self.graphicOutput = []
-        # self.graphicOutput.append(CG.getRoomObjectImage(self.name+'-0'))
 
         for i in range(2):
             try:
@@ -152,12 +151,12 @@ class RoomObject(Element):
     @staticmethod
     def go_upstair() -> bool:
         g = the_game()
-        if g.actualFloor + 1 < len(g.floorList):
+        if g.actual_floor + 1 < len(g.floor_list):
             g.floor.rm(g.floor.pos(g.hero))
 
-            g.actualFloor += 1
-            g.floor = g.gv.floor = g.floorList[g.actualFloor]
-            g.add_message('You are now in stage ' + str(g.actualFloor + 1) + '/' + str(len(g.floorList)))
+            g.actual_floor += 1
+            g.floor = g.gv.floor = g.floor_list[g.actual_floor]
+            g.add_message('You are now in stage ' + str(g.actual_floor + 1) + '/' + str(len(g.floor_list)))
 
             stair_coord = g.floor.pos(g._room_objects['downstair'])
             new_coord = stair_coord.get_empty_coord_around(g.floor)
@@ -171,12 +170,12 @@ class RoomObject(Element):
     @staticmethod
     def go_downstair() -> bool:
         g = the_game()
-        if g.actualFloor - 1 >= 0:
+        if g.actual_floor - 1 >= 0:
             g.floor.rm(g.floor.pos(g.hero))
 
-            g.actualFloor -= 1
-            g.floor = g.gv.floor = g.floorList[g.actualFloor]
-            g.add_message('You are now in stage ' + str(g.actualFloor + 1) + '/' + str(len(g.floorList)))
+            g.actual_floor -= 1
+            g.floor = g.gv.floor = g.floor_list[g.actual_floor]
+            g.add_message('You are now in stage ' + str(g.actual_floor + 1) + '/' + str(len(g.floor_list)))
 
             stair_coord = g.floor.pos(g._room_objects['upstair'])
             new_coord = stair_coord.get_empty_coord_around(g.floor)
@@ -191,8 +190,8 @@ class RoomObject(Element):
     def meet_trader() -> None:
         list_of_items_sold = []
         for i in range(2):
-            list_of_items_sold.append(the_game().rand_element(Game.equipments))
-        list_of_items_sold.append(the_game().rand_element(Game._weapons))
+            list_of_items_sold.append(the_game().rand_element(Game.equipments, the_game().floor_list[the_game().actual_floor].floor_number))
+        list_of_items_sold.append(the_game().rand_element(Game._weapons,the_game().floor_list[the_game().actual_floor].floor_number))
 
         the_game().gv.draw_marchand(list_of_items_sold)
 
@@ -750,7 +749,7 @@ class TeleportEffect(EphemeralEffect):  # IS AN INSTANT EFFECT
 
 
 # CONSTANT EFFECTS
-'''
+
 class ConstantEffect(Effect):
 
     def __init__(self, game, creature):
@@ -797,7 +796,7 @@ class WeaknessEffect(ConstantEffect):
     DESCRIPTION_DEACTIVATE = "- End of malus - I feel stronger... : -"
 
     def __init__(self, game, creature, duration, level):
-        super().__init__(self, game, creature)
+        super().__init__(game, creature)
         self.name = "Weakness"
         self.duration = duration
         self.level = level
@@ -820,7 +819,7 @@ class WeaknessEffect(ConstantEffect):
             self.info = f"{self.name}<{self.level}> | {WeaknessEffect.DESCRIPTION_DEACTIVATE}{self.value}"
 
         super().deactivate()
-'''
+
 
 
 # EQUIPMENT
@@ -943,8 +942,8 @@ class Room(object):
         """Decorates the room by adding a random equipment and monster."""
         for elem in self.specialObjects:
             map.put(self.rand_empty_middle_coord(map), elem)
-        map.put(self.rand_empty_coord(map), the_game().rand_equipment())
-        map.put(self.rand_empty_coord(map), the_game().rand_monster())
+        map.put(self.rand_empty_coord(map), the_game().rand_equipment(map.floor_number))
+        map.put(self.rand_empty_coord(map), the_game().rand_monster(map.floor_number))
 
 
 class Map(object):
@@ -970,9 +969,9 @@ class Map(object):
         self._mat = []
         self._elem = {}
         self._rooms = []
-        self._roomsToReach = []
-        self.floorNumber = floor_number
-        self.specialRoom = special_room
+        self._rooms_to_reach = []
+        self.floor_number = floor_number
+        self.special_room = special_room
 
         for i in range(size):
             self._mat.append([Map.empty] * size)
@@ -984,15 +983,15 @@ class Map(object):
 
         # Graphics
 
-        self.graphicMap = []
+        self.graphic_map = []
         CG.generate_graphic_map(self)
-        self.graphicElements = []
+        self.graphic_elements = []
         # TODO : This for loop can be done in a list comprehension
-        for i in range(len(self.graphicMap)):
+        for i in range(len(self.graphic_map)):
             l = []
-            for j in range(len(self.graphicMap)):
+            for j in range(len(self.graphic_map)):
                 l.append(None)
-            self.graphicElements.append(l)
+            self.graphic_elements.append(l)
 
         self.put_room_objects()
         if put_hero:
@@ -1006,21 +1005,21 @@ class Map(object):
 
     def add_room(self, room):
         """Adds a room in the map."""
-        self._roomsToReach.append(room)
+        self._rooms_to_reach.append(room)
         for y in range(room.c1.y, room.c2.y + 1):
             for x in range(room.c1.x, room.c2.x + 1):
                 self._mat[y][x] = Map.ground
 
     def find_room(self, coord):
         """If the coord belongs to a room, returns the room elsewhere returns None"""
-        for r in self._roomsToReach:
+        for r in self._rooms_to_reach:
             if coord in r:
                 return r
         return None
 
     def intersect_none(self, room):
         """Tests if the room shall intersect any room already in the map."""
-        for r in self._roomsToReach:
+        for r in self._rooms_to_reach:
             if room.intersect(r):
                 return False
         return True
@@ -1031,7 +1030,7 @@ class Map(object):
         self._mat[coord.y][coord.x] = Map.ground
         r = self.find_room(coord)
         if r:
-            self._roomsToReach.remove(r)
+            self._rooms_to_reach.remove(r)
             self._rooms.append(r)
 
     def corridor(self, cursor, end):
@@ -1049,23 +1048,23 @@ class Map(object):
         """Makes more rooms reachable.
             Start from one random reached room, and dig a corridor to an unreached room."""
         room_a = random.choice(self._rooms)
-        room_b = random.choice(self._roomsToReach)
+        room_b = random.choice(self._rooms_to_reach)
 
         self.corridor(room_a.center(), room_b.center())
 
     def reach_all_rooms(self):
         """Makes all rooms reachable.
             Start from the first room, repeats @reach until all rooms are reached."""
-        self._rooms.append(self._roomsToReach.pop(0))
-        while len(self._roomsToReach) > 0:
+        self._rooms.append(self._rooms_to_reach.pop(0))
+        while len(self._rooms_to_reach) > 0:
             self.reach()
 
     def put_room_objects(self):
         for key in Game._room_objects:
-            if key == "downstair" and self.floorNumber > 0:
+            if key == "downstair" and self.floor_number > 0:
                 r = random.choice(self._rooms)
                 r.specialObjects.append(Game._room_objects[key])
-            if key == "upstair" and self.floorNumber + 1 < the_game().nb_floors:
+            if key == "upstair" and self.floor_number + 1 < the_game().nb_floors:
                 r = random.choice(self._rooms)
                 r.specialObjects.append(Game._room_objects[key])
 
@@ -1077,8 +1076,8 @@ class Map(object):
 
     def generate_rooms(self, n):
         """Generates n random rooms and adds them if non-intersecting."""
-        if self.specialRoom is not None:
-            self.add_room(Game._specialRoomsList[self.specialRoom])
+        if self.special_room is not None:
+            self.add_room(Game._specialRoomsList[self.special_room])
         for i in range(n):
             r = self.rand_room()
             if self.intersect_none(r):
@@ -1093,7 +1092,7 @@ class Map(object):
         return item in self._elem
 
     def in_graphic_map(self, c):
-        return 0 <= c.x < len(self.graphicMap) and 0 <= c.y < len(self.graphicMap)
+        return 0 <= c.x < len(self.graphic_map) and 0 <= c.y < len(self.graphic_map)
 
     def __repr__(self):
         s = ""
@@ -1202,7 +1201,7 @@ class Map(object):
                     self.move(e, d)
 
     def update_elements(self, state):
-        clear_list(self.graphicElements)
+        clear_list(self.graphic_elements)
         for y in range(len(self._mat)):
             for x in range(len(self._mat)):
 
@@ -1212,14 +1211,14 @@ class Map(object):
                         elem.x = x
                         elem.y = y
                     elif isinstance(elem, Creature):
-                        self.graphicElements[y][x] = elem.graphicOutput[state]
+                        self.graphic_elements[y][x] = elem.graphicOutput[state]
                     elif isinstance(elem, Equipment):
-                        self.graphicElements[y][x] = elem.graphicOutput[0]
+                        self.graphic_elements[y][x] = elem.graphicOutput[0]
                     elif isinstance(elem, RoomObject):
                         if len(elem.graphicOutput) == 2:
-                            self.graphicElements[y][x] = elem.graphicOutput[state]
+                            self.graphic_elements[y][x] = elem.graphicOutput[state]
                         else:
-                            self.graphicElements[y][x] = elem.graphicOutput[0]
+                            self.graphic_elements[y][x] = elem.graphicOutput[0]
         the_game().gv.update_fog(self)
 
 
@@ -1424,20 +1423,20 @@ class GraphicVariables(object):
             for x in range(self.width // (2 * Map.sizeFactor)):
                 self.screen.blit(self.fog, (x * Map.sizeFactor, y * Map.sizeFactor))
 
-        for y in range(len(self.floor.graphicMap)):
-            for x in range(len(self.floor.graphicMap[y])):
+        for y in range(len(self.floor.graphic_map)):
+            for x in range(len(self.floor.graphic_map[y])):
                 pos = (Map.sizeFactor * x + self.orig_x, Map.sizeFactor * y + self.orig_y)
-                if self.floor.graphicMap[y][x][1]:
-                    self.screen.blit(self.floor.graphicMap[y][x][0], pos)
+                if self.floor.graphic_map[y][x][1]:
+                    self.screen.blit(self.floor.graphic_map[y][x][0], pos)
                 else:
                     self.screen.blit(self.fog, pos)
 
     def draw_elements(self, monster_state):
         self.floor.update_elements(monster_state)
-        for y in range(len(self.floor.graphicElements)):
-            for x in range(len(self.floor.graphicElements)):
-                case = self.floor.graphicElements[y][x]
-                if case is not None and self.floor.graphicMap[y][x][1]:
+        for y in range(len(self.floor.graphic_elements)):
+            for x in range(len(self.floor.graphic_elements)):
+                case = self.floor.graphic_elements[y][x]
+                if case is not None and self.floor.graphic_map[y][x][1]:
                     if isinstance(self.floor._mat[y][x], RoomObject):
                         if self.floor._mat[y][x].name == "upstair":
                             relief = 20
@@ -1768,13 +1767,14 @@ class GraphicVariables(object):
                     c = Coord(x + i, y + j)
                     if self.floor is not None and self.floor.in_graphic_map(c):
                         if Coord(x, y).distance(c) <= radius:
-                            self.floor.graphicMap[y + j][x + i][1] = True
+                            self.floor.graphic_map[y + j][x + i][1] = True
 
     def play_next_song(self):
         cle = 'Images/musiques/'
         self._songs = self._songs[1:] + [self._songs[0]]  # move current song to the back of the list
         pygame.mixer.music.load(cle + self._songs[0])
         pygame.mixer.music.play()
+
 
 class Game(object):
     """ Class representing game state """
@@ -1867,16 +1867,16 @@ class Game(object):
         self._message = []
 
         if hero is None:
-            hero = Hero(strength=10000)
+            hero = Hero(strength=10000) # TODO : Remove the OP strength before giving it to the teacher
         self.hero = hero
 
         self.nb_floors = nb_floors
-        self.floorList = []
-        self.actualFloor = 0
+        self.floor_list = []
+        self.actual_floor = 0
         self.floor = None
 
         self.number_of_round = 0
-        self.applyEffectsBool = False
+        self.apply_effects_bool = False
 
         # GRAPHICS
         self.gv = GraphicVariables(self.hero)
@@ -1893,15 +1893,15 @@ class Game(object):
             print('Building Floor ' + str(i + 1) + '/' + str(self.nb_floors))
 
             if i == rand:
-                self.floorList.append(Map(hero=self.hero, put_hero=place_hero, floor_number=i, special_room='marchand'))
+                self.floor_list.append(Map(hero=self.hero, put_hero=place_hero, floor_number=i, special_room='marchand'))
             elif i == self.nb_floors - 1:
-                self.floorList.append(
+                self.floor_list.append(
                     Map(hero=self.hero, put_hero=place_hero, floor_number=i, special_room='finalBoss'))
             else:
-                self.floorList.append(Map(hero=self.hero, put_hero=place_hero, floor_number=i))
+                self.floor_list.append(Map(hero=self.hero, put_hero=place_hero, floor_number=i))
             place_hero = False
 
-        self.gv.floor = self.floor = self.floorList[self.actualFloor]
+        self.gv.floor = self.floor = self.floor_list[self.actual_floor]
 
     @staticmethod
     def rearrange_sentences(text_message, length_max=50):
@@ -1945,7 +1945,7 @@ class Game(object):
         self._message.clear()
         return renders.copy()
 
-    def rand_element(self, collect):
+    def rand_element(self, collect, floor_level):
         """Returns a clone of random element from a collection using exponential random law."""
 
         x = random.expovariate(1 / self.level)
@@ -1954,13 +1954,13 @@ class Game(object):
                 element_list = collect[k]
         return copy.copy(random.choice(element_list))
 
-    def rand_equipment(self):
+    def rand_equipment(self, floor_level):
         """Returns a random equipment."""
-        return self.rand_element(Game.equipments)
+        return self.rand_element(Game.equipments, floor_level)
 
-    def rand_monster(self):
+    def rand_monster(self, floor_level):
         """Returns a random monster."""
-        return self.rand_element(Game.monsters)
+        return self.rand_element(Game.monsters, floor_level)
 
     def play_with_graphics(self):
 
@@ -2053,7 +2053,7 @@ class Game(object):
                 if self.gv.newRound:
                     self.gv.newRound = False
                     self.number_of_round += 1
-                    self.applyEffectsBool = True
+                    self.apply_effects_bool = True
 
                     # self.gv.updateBrouillard()
                     self.floor.move_all_monsters()
@@ -2062,13 +2062,13 @@ class Game(object):
                         self.hero.__dict__["stomach"] -= 1
                     self.hero.verify_stomach()
 
-                if self.applyEffectsBool:
+                if self.apply_effects_bool:
                     if len(self.active_effects) != 0:
                         i = 0
                         while i < len(self.active_effects):
                             if not self.active_effects[i].update():
                                 i += 1
-                    self.applyEffectsBool = False
+                    self.apply_effects_bool = False
 
                 # Messages
                 self.gv.draw_message(200)
