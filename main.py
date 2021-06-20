@@ -1319,11 +1319,12 @@ class GraphicVariables(object):
         # Draw Character
         scale = round(self.height / 5)
         hero_image = pygame.transform.scale(self.hero.graphicOutput, (scale, scale))
-        self.screen.blit(hero_image, ((self.width / 2) * (1 + 1 / 10), self.height / 10))
+        hero_drawing_x = (self.width / 2) * (1 + 1 / 10)
+        self.screen.blit(hero_image, (hero_drawing_x, self.height / 10))
+        h_d_width = 200
 
         # Draw hearts
         for i in range(Hero.defaultHp):
-            # self.screen.blit(self.blockSpace[0], (self.width/2*(1+1/5)+18*i,self.height/5))
             if self.hero.hp - i > 0:
                 image = self.hearts[0][state]
             elif self.hero.hp - i == -0.25:
@@ -1335,14 +1336,14 @@ class GraphicVariables(object):
             else:
                 image = self.hearts[4][state]
 
-            self.screen.blit(image, (self.width / 2 * (1 + 3 / 10) + 18 * i, self.height * 3 / 20))
+            self.screen.blit(image, (hero_drawing_x + h_d_width + 18 * i, self.height * 3 / 20))
 
         # Draw food
         for i in range(Hero.defaultStomachSize):
             if self.hero.stomach - i > 0:
-                self.screen.blit(self.food[0], (self.width / 2 * (1 + 3 / 10) + 18 * i, self.height * 3 / 20 + 25))
+                self.screen.blit(self.food[0], (hero_drawing_x + h_d_width + 18 * i, self.height * 3 / 20 + 25))
             else:
-                self.screen.blit(self.food[1], (self.width / 2 * (1 + 3 / 10) + 18 * i, self.height * 3 / 20 + 25))
+                self.screen.blit(self.food[1], (hero_drawing_x + h_d_width + 18 * i, self.height * 3 / 20 + 25))
 
         # Draw xp
         tnl = self.hero.toNextLevel
@@ -1365,26 +1366,26 @@ class GraphicVariables(object):
             else:
                 image = self.xp_bar[4]
 
-            self.screen.blit(image, (self.width / 2 * (1 + 3 / 10) + 18 * (i - 1), self.height * 3 / 20 + 50))
+            self.screen.blit(image, (hero_drawing_x + h_d_width + 18 * (i - 1), self.height * 3 / 20 + 50))
 
             if i == 1:
                 self.screen.blit(self.xp_bord[0],
-                                 (self.width / 2 * (1 + 3 / 10) + 18 * (i - 1), self.height * 3 / 20 + 50))
+                                 (hero_drawing_x + h_d_width + 18 * (i - 1), self.height * 3 / 20 + 50))
             elif i == 10:
                 self.screen.blit(self.xp_bord[2],
-                                 (self.width / 2 * (1 + 3 / 10) + 18 * (i - 1), self.height * 3 / 20 + 50))
+                                 (hero_drawing_x + h_d_width + 18 * (i - 1), self.height * 3 / 20 + 50))
             else:
                 self.screen.blit(self.xp_bord[1],
-                                 (self.width / 2 * (1 + 3 / 10) + 18 * (i - 1), self.height * 3 / 20 + 50))
+                                 (hero_drawing_x + h_d_width + 18 * (i - 1), self.height * 3 / 20 + 50))
 
         # Draw Hero Level
         text = self.game_font.render('Level: ' + str(self.hero.level), True, (0, 0, 0))
-        self.screen.blit(text, (self.width / 2 * (1 + 3 / 10), self.height * 3 / 20 - 30))
+        self.screen.blit(text, (hero_drawing_x + h_d_width, self.height * 3 / 20 - 30))
 
         # Draw gold
-        self.screen.blit(self.dollar, (self.width / 2 * (1 + 3 / 10), self.height * 3 / 20 + 75))
+        self.screen.blit(self.dollar, (hero_drawing_x + h_d_width, self.height * 3 / 20 + 75))
         text = self.game_font.render(str(self.hero.gold), True, (0, 0, 0))
-        self.screen.blit(text, (self.width / 2 * (1 + 3 / 10) + 30, self.height * 3 / 20 + 76))
+        self.screen.blit(text, (hero_drawing_x + h_d_width + 30, self.height * 3 / 20 + 76))
 
         # Inventory
         sf = 2
