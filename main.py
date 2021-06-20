@@ -313,7 +313,8 @@ class Hero(Creature):
 
     default_hp = 10
 
-    def __init__(self, name="Hero", hp=default_hp, abbreviation="@", strength=2, level=1, xp=24, gold=0, stomach=default_stomach_size,
+    def __init__(self, name="Hero", hp=default_hp, abbreviation="@", strength=2, level=1, xp=24, gold=0,
+                 stomach=default_stomach_size,
                  weapon_slot=None):
         Creature.__init__(self, name, hp, abbreviation, strength, xp, weapon_slot)
 
@@ -921,7 +922,10 @@ class Equipment(Element):
 
         else:
             the_game().add_message(f"The {creature.name} uses the item {self.name}")
-            return self.usage(self, creature)
+            try:
+                return self.usage(self, creature)
+            except AttributeError:
+                pass
 
 
 class Weapon(Equipment):
@@ -931,7 +935,8 @@ class Weapon(Equipment):
         Equipment.__init__(self, name, abbreviation, price)
         self.damage = damage
         self.launching_damage = launching_damage
-        self.come_back = come_back # Can the weapon come back to the hero when used (like a boomerang)
+        self.come_back = come_back  # The weapon can come back to the hero when used (like a boomerang)
+
 
 class Room(object):
     """A rectangular room in the map"""
@@ -1391,7 +1396,7 @@ class GraphicVariables(object):
         # Draw xp
         xp_percentage = self.hero.xp * 100 / self.hero.level_step
 
-        self.screen.fill((0,255,0), (hero_drawing_x + h_d_width, self.height * 3 / 20 + 56, xp_percentage*2,6))
+        self.screen.fill((0, 255, 0), (hero_drawing_x + h_d_width, self.height * 3 / 20 + 56, xp_percentage * 2, 6))
 
         for i in range(11):
             if i == 0:
@@ -1420,7 +1425,6 @@ class GraphicVariables(object):
         # Effects
         for i, x in enumerate(the_game().active_effects):
             if x.creature == self.hero:
-                hero_drawing_x
                 self.screen.blit(x.graphicOutput, (hero_drawing_x + h_d_width + 32 * i, self.height * 3 / 20 + 100))
 
         # Inventory
@@ -1469,7 +1473,7 @@ class GraphicVariables(object):
                     self.screen.blit(self.fog, pos)
 
         # Draw Map level
-        string = f"Floor number: {the_game().floor_list[the_game().actual_floor].floor_number+1} / {the_game().nb_floors}"
+        string = f"Floor number: {the_game().floor_list[the_game().actual_floor].floor_number + 1} / {the_game().nb_floors}"
         text = self.game_font.render(string, True, (0, 0, 0))
 
         text_width, text_height = self.game_font.size(string)
@@ -1520,7 +1524,8 @@ class GraphicVariables(object):
                 self._msg.pop(j)
 
     def draw_menu(self, list_menu, colour=(140, 140, 150)):
-        self.screen.fill((255, 255, 51), (self.width / 4, self.height / 6, self.width / 2, self.height * 4 / 6))
+        menu_y = self.height / 6
+        self.screen.fill((255, 255, 51), (self.width / 4, menu_y, self.width / 2, self.height * 4 / 6))
         b = 5
         self.screen.fill(colour,
                          (self.width / 4 + b, self.height / 6 + b, self.width / 2 - 2 * b, self.height * 4 / 6 - 2 * b))
@@ -1550,7 +1555,7 @@ class GraphicVariables(object):
 
             o_height = self.menu_font.size(objet)[1]
             text = self.menu_font.render(f + objet, True, (0, 0, 0))
-            text_rect = text.get_rect(center=(self.width / 2, self.height / 4 + (i + 1) * (o_height - 15)))
+            text_rect = text.get_rect(center=(self.width / 2, menu_y + (i + 1) * (o_height - 15)))
             self.screen.blit(text, text_rect)
 
     def draw_trader(self, list_objects):
@@ -1740,7 +1745,6 @@ class GraphicVariables(object):
             if self.list_menu[self.choice][1]:
                 break
 
-
         if event.key == pygame.K_RETURN:
 
             this_choice = self.list_menu[self.choice][0]
@@ -1828,7 +1832,7 @@ class GraphicVariables(object):
             self.inventory_on = False
 
         elif event.key == pygame.K_l:
-            Game._actions['l'](self.hero)
+            the_game().hero.throw_item(the_game().gv.select_from_inventory(Equipment), 5)
 
         self.floor.update_elements(self.monster_state)
 
@@ -1841,17 +1845,17 @@ class GraphicVariables(object):
         self.hero.graphicOutput = images[0]
         self.hero.animationUDLR = {(0, -1): images[12:16],  # cannot put Coord since it's not hashable
 
-                              (0, 1): images[:4],
-                              (-1, 1): images[:4],
-                              (1, 1): images[:4],
+                                   (0, 1): images[:4],
+                                   (-1, 1): images[:4],
+                                   (1, 1): images[:4],
 
-                              (-1, 0): images[4:8],
-                              (-1, -1): images[4:8],
+                                   (-1, 0): images[4:8],
+                                   (-1, -1): images[4:8],
 
-                              (1, 0): images[8:12],
-                              (1, -1): images[8:12],
+                                   (1, 0): images[8:12],
+                                   (1, -1): images[8:12],
 
-                              }
+                                   }
 
     def select_from_inventory(self, item_chosen_class):
         if self.choice_inv < len(self.hero._inventory) and isinstance(self.hero._inventory[self.choice_inv],
@@ -1932,18 +1936,21 @@ class Game(object):
     weapons = {
         0: [Weapon("Basic Sword", "†", price=2, damage=random.randint(2, 6), launching_damage=random.randint(1, 3))],
         1: [Weapon("Shuriken", "*", damage=random.randint(1, 2), launching_damage=random.randint(3, 5))],
-        3: [Weapon("Boomerang", "¬", price=7, damage=random.randint(1, 2), launching_damage=random.randint(2, 3), come_back=True)],
+        3: [Weapon("Boomerang", "¬", price=7, damage=random.randint(1, 2), launching_damage=random.randint(2, 3),
+                   come_back=True)],
     }
 
     """ available monsters """
     monsters = {0: [Creature("Goblin", hp=4, xp=4),
                     Creature("Bat", hp=2, abbreviation="W", xp=2),
                     Creature("BabyDemon", hp=2, strength=2, xp=4)],
-                1: [Creature("Ork", hp=6, strength=2, xp=10),
+                1: [Creature("Ork", hp=4, strength=2, xp=10),
                     Creature("Blob", hp=10, xp=8),
                     Creature("Angel", hp=10, xp=4)],
                 2: [Creature("Poisonous spider", hp=5, xp=10, strength=0, abbreviation="&",
-                             powers_list=[[PoisonEffect, 3, 1]], cooldown=5)],
+                             powers_list=[[PoisonEffect, 3, 1]], cooldown=5),
+                    Creature("BabyDemon", hp=2, strength=2, xp=4),
+                    ],
                 5: [Creature("Dragon", hp=20, strength=3, xp=50)],
                 20: [Creature("Death", hp=50, strength=3, xp=100, abbreviation='ñ')]
                 }
@@ -1958,7 +1965,7 @@ class Game(object):
                     isinstance(elem, Weapon) for elem in hero._inventory) else the_game().add_message(
                     "You don't have any weapon in your inventory"),
                 'n': lambda hero: hero.remove_current_weapon(),
-                # 'l': lambda hero: hero.throw_item(hero.weapon_slot[0], 5) if len(hero.weapon_slot) != 0 else False,
+                'l': lambda hero: hero.throw_item(hero.weapon_slot[0], 5) if len(hero.weapon_slot) != 0 else False,
 
                 }
 
@@ -1973,7 +1980,7 @@ class Game(object):
 
     sizeFactor = Map.sizeFactor
 
-    def __init__(self, level=1, hero=None, nb_floors=10):
+    def __init__(self, level=1, hero=None, nb_floors=4):
 
         self.level = level
         self.active_effects = []
@@ -2045,7 +2052,6 @@ class Game(object):
     def add_message(self, msg):
         """Adds a message in the message list."""
 
-        # SCREEN SIZE LIMIT = 32 characters
         line_list = Game.rearrange_sentences(msg)
         for line_text in line_list:
             self._message.append(line_text)
@@ -2145,10 +2151,8 @@ class Game(object):
                     if event.key == pygame.K_i:
                         self.gv.inventory_on = not self.gv.inventory_on
 
-
                     if self.gv.inventory_on:
                         self.gv.choose_in_inventory(event)
-
 
                 if not self.gv.inventory_on:
                     self.gv.player_plays(event)
@@ -2172,9 +2176,12 @@ class Game(object):
                     self.gv.newRound = False
                     self.number_of_round += 1
                     self.apply_effects_bool = True
-
-                    # self.gv.updateBrouillard()
                     self.floor.move_all_monsters()
+
+                    if self.number_of_round % 5 == 0 and self.hero.stomach == Hero.default_stomach_size:
+                        self.hero.hp += 1
+                        if self.hero.hp > self.hero.default_hp:
+                            self.hero.hp -= 1
 
                     if self.number_of_round % 20 == 0 and self.hero.__dict__["stomach"] > 0:
                         self.hero.__dict__["stomach"] -= 1
@@ -2202,6 +2209,4 @@ def the_game(game=Game()):
     return game
 
 
-# getch = _find_getch()
-# the_game().play()
 the_game().play_with_graphics()
