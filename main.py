@@ -308,12 +308,12 @@ class Hero(Creature):
         Is a creature. Has an inventory of elements. """
 
     default_inventory_size = 10
-    default_stomach_size = 5
+    default_stomach_size = 10
     default_level_size = 25
 
     default_hp = 10
 
-    def __init__(self, name="Hero", hp=default_hp, abbreviation="@", strength=2, level=1, xp=24, gold=0, stomach=5,
+    def __init__(self, name="Hero", hp=default_hp, abbreviation="@", strength=2, level=1, xp=24, gold=0, stomach=default_stomach_size,
                  weapon_slot=None):
         Creature.__init__(self, name, hp, abbreviation, strength, xp, weapon_slot)
 
@@ -932,11 +932,7 @@ class Weapon(Equipment):
         Equipment.__init__(self, name, abbreviation, price)
         self.damage = damage
         self.launching_damage = launching_damage
-        self.come_back = come_back
-
-    def full_description(self):
-        return
-
+        self.come_back = come_back # Can the weapon come back to the hero when used (like a boomerang)
 
 class Room(object):
     """A rectangular room in the map"""
@@ -1840,7 +1836,23 @@ class GraphicVariables(object):
     def change_hero_appearance(self, costume):
         images = CG.get_hero_image(costume)
         self.hero.graphicOutput = images[0]
-        self.hero.animationUDLR = [images[12:16], images[:4], images[4:8], images[8:12]]
+
+        images = CG.get_hero_image(costume)
+
+        self.hero.graphicOutput = images[0]
+        self.hero.animationUDLR = {(0, -1): images[12:16],  # cannot put Coord since it's not hashable
+
+                              (0, 1): images[:4],
+                              (-1, 1): images[:4],
+                              (1, 1): images[:4],
+
+                              (-1, 0): images[4:8],
+                              (-1, -1): images[4:8],
+
+                              (1, 0): images[8:12],
+                              (1, -1): images[8:12],
+
+                              }
 
     def select_from_inventory(self, item_chosen_class):
         if self.choice_inv < len(self.hero._inventory) and isinstance(self.hero._inventory[self.choice_inv],
