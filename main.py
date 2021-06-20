@@ -193,16 +193,18 @@ class RoomObject(Element):
             list_of_items_sold.append(
                 the_game().rand_element(Game.equipments, the_game().floor_list[the_game().actual_floor].floor_number))
         list_of_items_sold.append(
-            the_game().rand_element(Game._weapons, the_game().floor_list[the_game().actual_floor].floor_number))
+            the_game().rand_element(Game.weapons, the_game().floor_list[the_game().actual_floor].floor_number))
 
-        the_game().gv.draw_marchand(list_of_items_sold)
+        the_game().gv.draw_trader(list_of_items_sold)
 
 
 class Creature(Element):
     """A creature that occupies the dungeon.
         Is an Element. Has hit points and strength."""
 
-    defaultInventorySize = 10
+    default_inventory_size = 10
+
+    # TODO : Inventory size doesn't work
 
     def __init__(self, name: str, hp: int, abbreviation: str = "", strength: int = 1, xp: int = 0,
                  weapon_slot: list = None, powers_list: list = None, cooldown: int = 0) -> None:
@@ -225,7 +227,6 @@ class Creature(Element):
         self.cooldown = 0
         self._default_cooldown = cooldown
 
-        # self._inventory = [Weapon("HUGE Sword", "T", usage=None, durability=100, damage=100)]
         self._inventory = []
 
         # Graphics
@@ -277,10 +278,11 @@ class Creature(Element):
 
         self.weapon_slot.append(weapon)
         self._inventory.remove(weapon)
+        the_game().add_message("You equipped your weapon in it's slot")
 
     def remove_current_weapon(self) -> None:
         if self.current_weapon():
-            if len(self._inventory) <= self.defaultInventorySize:
+            if len(self._inventory) < self.default_inventory_size:
                 self._inventory.append(self.current_weapon())
                 self.weapon_slot.clear()
                 the_game().add_message("You removed your weapon from it's slot")
@@ -299,28 +301,12 @@ class Creature(Element):
         else:
             return False
 
-    def has_an_hitting_weapon(self):
-        if self.current_weapon().weaponType == Weapon._weapon_type_list[0]:
-            return True
-
-    def has_a_throwing_weapon(self):
-        if self.current_weapon().weaponType == Weapon._weapon_type_list[1]:
-            return True
-
-    def has_a_projectile_weapon(self):
-        if self.current_weapon().weaponType == Weapon._weapon_type_list[2]:
-            return True
-
-
-# def applyStuffEffects(self):
-#     return
-
 
 class Hero(Creature):
     """The hero of the game.
         Is a creature. Has an inventory of elements. """
 
-    defaultInventorySize = 10
+    default_inventory_size = 10
     defaultStomachSize = 5
     defaultLevelSize = 25
 
@@ -337,6 +323,9 @@ class Hero(Creature):
         self.gold = gold
         self.stomach = stomach
         self.default_stomach_size = stomach
+
+        # TODO : Remove before sending to the teacher
+        self._inventory = [Weapon("basic Sword", "T", damage=100, launching_damage=100000000, come_back=True)]
 
         # GRAPHICS
         images = CG.get_hero_image("Template")
@@ -400,13 +389,14 @@ class Hero(Creature):
         if elem.name == "gold":
             self.gold += 1
         else:
-            self._inventory.append(elem)
+            if len(self._inventory) + 1 <= self.default_inventory_size:
+                self._inventory.append(elem)
 
-            if len(self._inventory) > Hero.defaultInventorySize:
+            elif len(self._inventory) > Hero.default_inventory_size:
                 the_game().add_message("You don't have enough space in your inventory")
 
     def check_inventory_size(self):
-        if len(self._inventory) > Hero.defaultInventorySize:
+        if len(self._inventory) > Hero.default_inventory_size:
             the_game().add_message("Inventory full. Delete an item to gain space")
             return False
         return True
@@ -479,7 +469,7 @@ class Hero(Creature):
 
     @staticmethod
     def choose_direction():
-        print("Choose a direction to orientate yourself using the keys to move")
+        the_game().add_message("Choose a direction to orientate yourself using the keys to move")
 
         choice = None
         while choice is None:
@@ -547,16 +537,21 @@ class Hero(Creature):
             if isinstance(things_on_next_cell, Creature):
                 hit = False
                 if isinstance(item, Weapon):
-                    things_on_next_cell.hp -= item.damage
+                    things_on_next_cell.hp -= item.launching_damage
+                    if things_on_next_cell.hp <= 0:
+                        the_game().floor.rm(the_game().floor.pos(things_on_next_cell))
                     hit = True
                 else:
                     item.use(things_on_next_cell, monster=True)
 
                 if i != 0:
                     the_game().floor.rm(the_game().floor.pos(item))
-                self.delete_item(item, True)
+
+                if not item.come_back:
+                    self.delete_item(item, True)
+
                 if hit:
-                    the_game().add_message(f"[{things_on_next_cell.name}] lost {item.damage} hp")
+                    the_game().add_message(f"[{things_on_next_cell.name}] lost {item.launching_damage} hp")
                 break
 
             elif isinstance(things_on_next_cell, Equipment):
@@ -890,9 +885,18 @@ class Equipment(Element):
 class Weapon(Equipment):
     """A weapon which can be used by the Hero or the monsters"""
 
-    def __init__(self, name, abbreviation="", usage=None, damage=1):
+    def __init__(self, name, abbreviation="", usage=None, damage=1, launching_damage=1, come_back=False):
         Equipment.__init__(self, name, abbreviation, usage)
         self.damage = damage
+        self.launching_damage = launching_damage
+        self.come_back = come_back
+
+    # def __repr__(self):
+    #     if self.come_back:
+    #         to_add = "[come_back]"
+    #     else:
+    #         to_add = ""
+    #     return f"<{self.name}>[dmg:{self.damage}][launch_dmg:{self.launching_damage}]" + to_add
 
 
 class Room(object):
@@ -1226,7 +1230,6 @@ class Map(object):
         the_game().gv.update_fog(self)
 
 
-# TODO : Jaime wants to change something (qwerty / azerty)
 class GraphicVariables(object):
     def __init__(self, hero):
 
@@ -1409,9 +1412,9 @@ class GraphicVariables(object):
         self.screen.blit(self.blockSpace, (self.width / 2 * (1 + 1 / 10) + 65, self.height * 7 / 20))
         if len(self.hero.weapon_slot) != 0:
             self.screen.blit(self.hero.weapon_slot[0].graphicOutput[1],
-                             (self.width / 2 * (1 + 3 / 20), self.height * 7 / 20))
+                             (self.width / 2 * (1 + 1 / 10) + 65, self.height * 7 / 20))
 
-        for i in range(Hero.defaultInventorySize):
+        for i in range(Hero.default_inventory_size):
             self.screen.blit(self.blockSpace, (self.width / 2 * (1 + 3 / 10) + case * i * sf, self.height * 7 / 20))
             if i < len(self.hero._inventory):
                 if sf != 1:
@@ -1471,7 +1474,6 @@ class GraphicVariables(object):
                     self.screen.blit(case,
                                      (Map.sizeFactor * x + self.orig_x, Map.sizeFactor * y + self.orig_y - relief))
 
-    # TODO : Create a function to manage messages that are too long
     def draw_message(self, time):
         # Draw Message self.screen
         self.screen.fill((20, 12, 28), (
@@ -1506,28 +1508,34 @@ class GraphicVariables(object):
                          (self.width / 4 + b, self.height / 4 + b, self.width / 2 - 2 * b, self.height / 2 - 2 * b))
 
         self.choice %= len(list_menu)
-        size = 40
 
         for i in range(len(list_menu)):
             if i == self.choice:
                 if list_menu[i][1]:
-                    f = "> "
+                    f = ">>   "
                 else:
                     f = "  "
                     self.choice = (self.choice + 1) % len(list_menu)
             else:
                 f = "  "
-            # while
-            if isinstance(list_menu[i][0], Equipment):
-                objet = list_menu[i][0].name + ' [ ' + str(list_menu[i][0].price) + ' ]'
+            current_item = list_menu[i][0]
+            if isinstance(current_item, Weapon):
+                if current_item.come_back:
+                    to_add = "(boomerang effect)"
+                else:
+                    to_add = ""
+                objet = f"{current_item.name}   € : [{str(current_item.price)}]   < dmg = {current_item.damage}, launch dmg = {current_item.launching_damage} >" + to_add
+            elif isinstance(current_item, Equipment):
+                objet = f"{current_item.name}   € : [{str(current_item.price)}]"
             else:
-                objet = list_menu[i][0]
+                objet = current_item
 
+            o_height = self.menu_font.size(objet)[1]
             text = self.menu_font.render(f + objet, True, (0, 0, 0))
-            text_rect = text.get_rect(center=(self.width / 2, self.height / 4 + (i + 1) * size))
+            text_rect = text.get_rect(center=(self.width / 2, self.height / 4 + (i + 1) * (o_height - 15)))
             self.screen.blit(text, text_rect)
 
-    def draw_marchand(self, list_objects):
+    def draw_trader(self, list_objects):
         lm = [('Do you want something ?', False), ('', False)]
 
         for o in list_objects:
@@ -1654,7 +1662,7 @@ class GraphicVariables(object):
                     elif event.key == pygame.K_d:  # RIGHT
                         self.hero.moving_UDLR[3] = keydown_bool
 
-                    # Diagonales
+                    # Diagonals
                     elif event.key == pygame.K_a:  # UP LEFT
                         self.hero.moving_UDLR[4] = keydown_bool
                     elif event.key == pygame.K_e:  # UP RIGHT
@@ -1702,7 +1710,7 @@ class GraphicVariables(object):
             elif event.key == pygame.K_s:
                 self.choice += 1
 
-        if event.key == pygame.K_UP:  # changes
+        if event.key == pygame.K_UP:
             self.choice -= 1
         elif event.key == pygame.K_DOWN:
             self.choice += 1
@@ -1771,7 +1779,7 @@ class GraphicVariables(object):
             elif event.key == pygame.K_d:
                 self.choice_inv += 1
 
-        if event.key == pygame.K_LEFT:  # change
+        if event.key == pygame.K_LEFT:
             self.choice_inv -= 1
         elif event.key == pygame.K_RIGHT:
             self.choice_inv += 1
@@ -1793,8 +1801,9 @@ class GraphicVariables(object):
             Game._actions["n"](self.hero)
             self.inventory_on = False
 
-        elif event.key == pygame.K_i:  # change
-            self.inventory_on = True
+        # TODO: Jaime repair this next things
+        elif event.key == pygame.K_i:
+            self.inventory_on = False
 
         elif event.key == pygame.K_l:
             Game._actions['l'](self.hero)
@@ -1810,9 +1819,16 @@ class GraphicVariables(object):
         self.hero.animationUDLR = [images[12:16], images[:4], images[4:8], images[8:12]]
 
     def select_from_inventory(self, item_chosen_class):
+        # if isinstance(item_chosen_class, Weapon):
+        #     for item in self.hero._inventory:
+        #         if isinstance(item, Weapon):
+        #             print("ARRRRRRRRRGHGHGHGHGHGHGHGHGHGHGHGHGHGHG")
+        #             return item
+
         if self.choice_inv < len(self.hero._inventory) and isinstance(self.hero._inventory[self.choice_inv],
                                                                       item_chosen_class):
             return self.hero._inventory[self.choice_inv]
+
         return None
 
     def draw_game_screen(self):
@@ -1857,37 +1873,37 @@ class Game(object):
                           FeedEffect(hero, 1, hero.default_stomach_size))),
                       Equipment("hunger mushroom", "£",
                                 usage=lambda self, hero: HungerEffect.activate(HungerEffect(hero, 3, 1))),
-                      Equipment("poisonous mushroom", "%",
+                      Equipment("poisonous mushroom", "%", price=2,
                                 usage=lambda self, hero: PoisonEffect.activate(PoisonEffect(hero, 3, 1))),
                       ],
-                  1: [Equipment("strength potion", "!",
+                  1: [Equipment("strength potion", "!", price=3,
                                 usage=lambda self, hero: StrengthEffect.activate(
                                     StrengthEffect(hero, 10, 3))),
-                      Equipment("weakness potion", "!",
+                      Equipment("weakness potion", "!", price=3,
                                 usage=lambda self, hero: WeaknessEffect.activate(WeaknessEffect(hero, 10))),
-                      Equipment("teleport potion", "!",
+                      Equipment("teleport potion", "!", price=3,
                                 usage=lambda self, hero: TeleportEffect.activate(TeleportEffect(hero))),
-                      Equipment("healing potion", "!",
+                      Equipment("healing potion", "!", price=3,
                                 usage=lambda self, hero: HealEffect.activate(HealEffect(hero, 1, 3))),
                       ],
-                  2: [Equipment("milk", "m", usage=lambda self, hero: Effect.clear()),
+                  2: [Equipment("milk", "m", price=4, usage=lambda self, hero: Effect.clear()),
                       ],
-                  3: [Equipment("portoloin", "w",
+                  3: [Equipment("portoloin", "w", price=15,
                                 usage=lambda self, hero: TeleportEffect.activate(TeleportEffect(hero),
                                                                                  False)),
-                      Equipment("healing potion", "!",
+                      Equipment("healing potion", "!", price=5,
                                 usage=lambda self, hero: HealEffect.activate(HealEffect(hero, 1, 6))),
-                      Equipment("strength potion", "!",
+                      Equipment("strength potion", "!", price=5,
                                 usage=lambda self, hero: StrengthEffect.activate(
                                     StrengthEffect(hero, 10, 10))),
                       ],
                   }
 
     """ available weapons """
-    _weapons = {
-        0: [Weapon("Basic Sword", "†", damage=random.randint(2, 6))],
-        1: [Weapon("Shuriken", "*", damage=random.randint(1, 4))],
-        #2: [Weapon("Boomerang", "¬", damage=random.randint(1,2))],
+    weapons = {
+        0: [Weapon("Basic Sword", "†", random.randint(2, 6), random.randint(1, 3))],
+        1: [Weapon("Shuriken", "*", random.randint(1, 2), random.randint(3, 5))],
+        4: [Weapon("Boomerang", "¬", random.randint(1, 2), random.randint(2, 3), come_back=True)],
     }
 
     """ available monsters """
@@ -1921,7 +1937,7 @@ class Game(object):
                 'h': lambda hero: the_game().add_message("Actions available : " + str(list(Game._actions.keys()))),
                 't': lambda hero: hero.delete_item(
                     the_game().gv.select_from_inventory(Equipment) if len(hero._inventory) > 0 else False),
-                'b': lambda hero: hero.equip_weapon(the_game().gv.select_from_inventory(Equipment)) if any(
+                'b': lambda hero: hero.equip_weapon([x for x in hero._inventory if isinstance(x, Weapon)][0]) if any(
                     isinstance(elem, Weapon) for elem in hero._inventory) else the_game().add_message(
                     "You don't have any weapon in your inventory"),
                 'n': lambda hero: hero.remove_current_weapon(),
