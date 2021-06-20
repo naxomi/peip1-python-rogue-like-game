@@ -1958,7 +1958,7 @@ class Game(object):
                     isinstance(elem, Weapon) for elem in hero._inventory) else the_game().add_message(
                     "You don't have any weapon in your inventory"),
                 'n': lambda hero: hero.remove_current_weapon(),
-                'l': lambda hero: hero.throw_item(hero.weapon_slot[0], 5) if len(hero.weapon_slot) != 0 else False,
+                # 'l': lambda hero: hero.throw_item(hero.weapon_slot[0], 5) if len(hero.weapon_slot) != 0 else False,
 
                 }
 
