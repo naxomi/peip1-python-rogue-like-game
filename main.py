@@ -4,9 +4,7 @@ import random
 import CasesGraphiques as CG
 import pygame
 
-
-# random.seed(123) THIS SEED RAISES AN ERROR
-random.seed(234)
+# random.seed(234)
 
 def _find_getch():
     """Single char input, only works only on mac/linux/windows OS terminals"""
@@ -39,11 +37,11 @@ def sign(x: int) -> int:
     return -1
 
 
-def opp(x):
+def opp(x: int) -> int:
     return -x + 1
 
 
-def clear_list(list_to_clear):
+def clear_list(list_to_clear: list) -> None:
     for i in range(len(list_to_clear)):
         for j in range(len(list_to_clear)):
             list_to_clear[i][j] = None
@@ -78,25 +76,26 @@ class Coord(object):
         d = self - other
         return math.sqrt(d.x * d.x + d.y * d.y)
 
-    def empty_around(self, map):
+    def empty_around(self, actual_map: "Map") -> bool:
         # Return True if the coordinates around are corresponding
         res = True
         for y in range(-1, 2):
             for x in range(-1, 2):
-                res = res and (map.get(self + Coord(x, y)) == Map.ground or map.get(self + Coord(x, y)) == map.hero)
+                res = res and (actual_map.get(self + Coord(x, y)) == Map.ground or actual_map.get(
+                    self + Coord(x, y)) == actual_map.hero)
         return res
 
-    def get_empty_coord_around(self, map):
-        l = []
-        o = map.get(self)
+    def get_empty_coord_around(self, actual_map: "Map") -> "Coord":
+        available_coord_list = []
+        o = actual_map.get(self)
         for i in range(-1, 2):
             for j in range(-1, 2):
                 way = Coord(i, j)
-                if map.checkMove(o, way) == Map.ground:
-                    l.append(self + way)
-        return random.choice(l)
+                if actual_map.check_move(o, way) == Map.ground:
+                    available_coord_list.append(self + way)
+        return random.choice(available_coord_list)
 
-    def get_tuple(self):
+    def get_tuple(self) -> tuple:
         return self.x, self.y
 
 
@@ -126,7 +125,8 @@ class Element(object):
 
 class RoomObject(Element):
 
-    def __init__(self, name, abbreviation='', usage=None):
+    def __init__(self, name: str = "", abbreviation: str = "", usage=None) -> None:
+        # TODO : What is the type of a lambda expression
         Element.__init__(self, name, abbreviation)
 
         self.usage = usage
@@ -137,25 +137,20 @@ class RoomObject(Element):
         for i in range(2):
             try:
                 self.graphicOutput.append(CG.get_room_object_image(self.name + '-' + str(i)))
-            except:
+            except FileNotFoundError:
                 print("Not image for:", self.name + '-' + str(i))
                 pass
 
-    def meet(self, hero):
+    def meet(self, hero: "Hero") -> bool:
         """The roomObject is encountered by hero.
             The hero uses the roomObject.
             Return True if used."""
         if not isinstance(hero, Hero):
             return False
-        ret = False
-
-        g = the_game()
-        ret = self.usage()
-
-        return ret
+        return self.usage()
 
     @staticmethod
-    def go_upstairs():
+    def go_upstair() -> bool:
         g = the_game()
         if g.actualFloor + 1 < len(g.floorList):
             g.floor.rm(g.floor.pos(g.hero))
@@ -174,7 +169,7 @@ class RoomObject(Element):
         return False
 
     @staticmethod
-    def go_downstairs():
+    def go_downstair() -> bool:
         g = the_game()
         if g.actualFloor - 1 >= 0:
             g.floor.rm(g.floor.pos(g.hero))
@@ -193,13 +188,13 @@ class RoomObject(Element):
         return False
 
     @staticmethod
-    def meet_trader():
-        l = []
+    def meet_trader() -> None:
+        list_of_items_sold = []
         for i in range(2):
-            l.append(the_game().rand_element(Game.equipments))
-        l.append(the_game().rand_element(Game._weapons))
+            list_of_items_sold.append(the_game().rand_element(Game.equipments))
+        list_of_items_sold.append(the_game().rand_element(Game._weapons))
 
-        the_game().gv.draw_marchand(l)
+        the_game().gv.draw_marchand(list_of_items_sold)
 
 
 class Creature(Element):
@@ -361,16 +356,16 @@ class Hero(Creature):
     def description(self):
         """Description of the hero"""
         if len(self.weapon_slot) != 0:
-            return Creature.description(self) + str(self._inventory) + " |" + str(self.current_weapon()) + "|"
+            return Creature.description(self) + " |" + str(self.current_weapon()) + "|"
         else:
-            return Creature.description(self) + str(self._inventory)
+            return Creature.description(self)
 
     def full_description(self):
         """Complete description of the hero"""
         res = ''
         for e in self.__dict__:
 
-            if e[0] != '_' and "default" not in e:
+            if e[0] != ' ' and "default" not in e:
                 if e == "xp":
                     res += '> ' + e + ' : ' + str(self.__dict__[e]) + "/" + str(
                         self.defaultLevelSize * self.level) + '\n'
@@ -402,15 +397,6 @@ class Hero(Creature):
                 the_game().add_message("You don't have enough space in your inventory")
 
     def check_inventory_size(self):
-        if len(self._inventory) > Hero.defaultInventorySize:
-            while True:
-                try:
-                    self.delete_item(the_game().select(self._inventory))
-                    break
-                except:
-                    print("Wrong value entered.")
-
-    def check_inv_size(self):
         if len(self._inventory) > Hero.defaultInventorySize:
             the_game().add_message("Inventory full. Delete an item to gain space")
             return False
@@ -474,7 +460,7 @@ class Hero(Creature):
 
     def buy(self, o):
         if isinstance(o, Equipment):
-            if self.check_inv_size():
+            if self.check_inventory_size():
                 if self.gold >= o.price:
                     self.gold -= o.price
                     self.take(o)
@@ -906,12 +892,12 @@ class Weapon(Equipment):
 class Room(object):
     """A rectangular room in the map"""
 
-    def __init__(self, c1, c2, specialObjects=None):
+    def __init__(self, c1, c2, special_objects=None):
         self.c1 = c1
         self.c2 = c2
-        if specialObjects is None:
-            specialObjects = []
-        self.specialObjects = specialObjects
+        if special_objects is None:
+            special_objects = []
+        self.specialObjects = special_objects
 
     def __repr__(self):
         return "[" + str(self.c1) + ", " + str(self.c2) + "]"
@@ -940,26 +926,23 @@ class Room(object):
             c = self.rand_coord()
         return c
 
-    def randEmptyMiddleCoord(self, map):
-        # Same as rand_empty_coord but surrounded by ground
-        e = Map.empty
-        g = Map.ground
-        m = ''
-        l = []
+    def rand_empty_middle_coord(self, map):
+        """Same as rand_empty_coord but surrounded by ground"""
+        list_of_coord_available = []
         for y in range(self.c1.y + 1, self.c2.y):
             for x in range(self.c1.x + 1, self.c2.x):
                 c = Coord(x, y)
                 if c.empty_around(map) and c != self.center():
-                    l.append(c)
-        if len(l) == 0:
-            return None
+                    list_of_coord_available.append(c)
+        if len(list_of_coord_available) == 0:
+            return self.rand_coord()
         else:
-            return random.choice(l)
+            return random.choice(list_of_coord_available)
 
     def decorate(self, map):
         """Decorates the room by adding a random equipment and monster."""
         for elem in self.specialObjects:
-            map.put(self.randEmptyMiddleCoord(map), elem)
+            map.put(self.rand_empty_middle_coord(map), elem)
         map.put(self.rand_empty_coord(map), the_game().rand_equipment())
         map.put(self.rand_empty_coord(map), the_game().rand_monster())
 
@@ -980,16 +963,16 @@ class Map(object):
            'c': Coord(1, 1),
            }
 
-    empty = e = '_'  # A non walkable cell
+    empty = e = ' '  # A non walkable cell
     sizeFactor = round(16 * 1.25)
 
-    def __init__(self, size=20, hero=None, putHero=True, floorNumber=None, specialRoom=None):
+    def __init__(self, size=20, hero=None, put_hero=True, floor_number=None, special_room=None):
         self._mat = []
         self._elem = {}
         self._rooms = []
         self._roomsToReach = []
-        self.floorNumber = floorNumber
-        self.specialRoom = specialRoom
+        self.floorNumber = floor_number
+        self.specialRoom = special_room
 
         for i in range(size):
             self._mat.append([Map.empty] * size)
@@ -1004,6 +987,7 @@ class Map(object):
         self.graphicMap = []
         CG.generate_graphic_map(self)
         self.graphicElements = []
+        # TODO : This for loop can be done in a list comprehension
         for i in range(len(self.graphicMap)):
             l = []
             for j in range(len(self.graphicMap)):
@@ -1011,14 +995,14 @@ class Map(object):
             self.graphicElements.append(l)
 
         self.put_room_objects()
-        if putHero:
+        if put_hero:
             self.put(self._rooms[0].center(), hero)
             self.hero.x = self._rooms[0].center().x
             self.hero.y = self._rooms[0].center().y
         for r in self._rooms:
             r.decorate(self)
 
-        self.updateElements(0)
+        self.update_elements(0)
 
     def add_room(self, room):
         """Adds a room in the map."""
@@ -1064,10 +1048,10 @@ class Map(object):
     def reach(self):
         """Makes more rooms reachable.
             Start from one random reached room, and dig a corridor to an unreached room."""
-        roomA = random.choice(self._rooms)
-        roomB = random.choice(self._roomsToReach)
+        room_a = random.choice(self._rooms)
+        room_b = random.choice(self._roomsToReach)
 
-        self.corridor(roomA.center(), roomB.center())
+        self.corridor(room_a.center(), room_b.center())
 
     def reach_all_rooms(self):
         """Makes all rooms reachable.
@@ -1185,7 +1169,7 @@ class Map(object):
             elif self.get(dest) != Map.empty and self.get(dest).meet(e) and self.get(dest) != self.hero:
                 self.rm(dest)
 
-    def checkMove(self, e, way):
+    def check_move(self, e, way):
         """Returns element in way"""
         orig = self.pos(e)
         dest = orig + way
@@ -1195,15 +1179,15 @@ class Map(object):
 
     def direction(self, c1, c2):
         """Returns the direction between two coordinates."""
-        wayFinale = Coord(0, 0)
+        final_way = Coord(0, 0)
         for i in range(-1, 2):
             for j in range(-1, 2):
                 way = Coord(i, j)
                 in_map = 0 <= c1.x + way.x < len(self._mat) and 0 <= c1.y + way.y < len(self._mat)
-                if in_map and (c1 + way).distance(c2) < (c1 + wayFinale).distance(c2) and (self.get(
+                if in_map and (c1 + way).distance(c2) < (c1 + final_way).distance(c2) and (self.get(
                         c1 + way) == self.ground or self.get(c1 + way) == self.hero):
-                    wayFinale = way
-        return wayFinale
+                    final_way = way
+        return final_way
 
     def move_all_monsters(self):
         """Moves all monsters in the map.
@@ -1217,7 +1201,7 @@ class Map(object):
                 if self.get(c + d) in [Map.ground, self.hero]:
                     self.move(e, d)
 
-    def updateElements(self, state):
+    def update_elements(self, state):
         clear_list(self.graphicElements)
         for y in range(len(self._mat)):
             for x in range(len(self._mat)):
@@ -1361,10 +1345,10 @@ class GraphicVariables(object):
                 self.screen.blit(self.food[1], (self.width / 2 * (1 + 3 / 10) + 18 * i, self.height * 3 / 20 + 25))
 
         # Draw xp
-        a = 0
         tnl = self.hero.toNextLevel
         exp = self.hero.xp * 100 / tnl
 
+        # TODO: Repair XP bar
         for i in range(1, 11):
             if exp >= 10:
                 image = self.xp_bar[0]
@@ -1448,7 +1432,7 @@ class GraphicVariables(object):
                     self.screen.blit(self.fog, pos)
 
     def draw_elements(self, monster_state):
-        self.floor.updateElements(monster_state)
+        self.floor.update_elements(monster_state)
         for y in range(len(self.floor.graphicElements)):
             for x in range(len(self.floor.graphicElements)):
                 case = self.floor.graphicElements[y][x]
@@ -1565,7 +1549,7 @@ class GraphicVariables(object):
 
         if way != Coord(0, 0):
 
-            elem_in_way = self.floor.checkMove(h, way)
+            elem_in_way = self.floor.check_move(h, way)
             if elem_in_way == self.floor.ground:
                 pos = (sf * h.x + way.x * h.state * sf / 4 + self.orig_x,
                        sf * h.y + way.y * h.state * sf / 4 + self.orig_y + persp)
@@ -1746,7 +1730,7 @@ class GraphicVariables(object):
         elif event.key == pygame.K_l:
             Game._actions['l'](self.hero)
 
-        self.floor.updateElements(self.monster_state)
+        self.floor.update_elements(self.monster_state)
 
     def change_hero_appearance(self, costume):
         images = CG.get_hero_image(costume)
@@ -1764,13 +1748,13 @@ class GraphicVariables(object):
         self.draw_elements(self.monster_state)
         self.draw_hero_move()
 
-    def update_fog(self, map):
-        for o in [map.hero, Game.monsters[20][0]]:
+    def update_fog(self, actual_map):
+        for o in [actual_map.hero, Game.monsters[20][0]]:
             if isinstance(o, Hero):
                 x = self.hero.x
                 y = self.hero.y
             else:
-                c = map.pos(o)
+                c = actual_map.pos(o)
                 if c is None:
                     break
                 x = c.x
@@ -1790,8 +1774,6 @@ class GraphicVariables(object):
         self._songs = self._songs[1:] + [self._songs[0]]  # move current song to the back of the list
         pygame.mixer.music.load(cle + self._songs[0])
         pygame.mixer.music.play()
-        print(self._songs[0])
-
 
 class Game(object):
     """ Class representing game state """
@@ -1820,11 +1802,11 @@ class Game(object):
 
     """ available weapons """
     _weapons = {
-        0: [Weapon("Basic Sword", "†", "hitting", usage=None, damage=3, durability=10)],
-        1: [Weapon("Basic Sword", "†", "hitting", usage=None, damage=3, durability=10)],
+        0: [Weapon("Basic Sword", "†", "hitting", damage=3)],
+        1: [Weapon("Basic Sword", "†", "hitting", damage=3)],
         # 0: [Weapon("Basic Sword", "†", "hitting", usage=None, damage=3, durability=10)],
         # 1: [Weapon("Shuriken", "*", "hitting", usage=lambda self, hero: Weapon.hit)],
-        2: [Weapon("Basic Sword", "†", "hitting", usage=None, damage=3, durability=10)],
+        2: [Weapon("Basic Sword", "†", "hitting", damage=3)],
     }
 
     """ available monsters """
@@ -1866,8 +1848,8 @@ class Game(object):
 
                 }
 
-    _room_objects = {'upstair': RoomObject('upstair', "^", usage=lambda: RoomObject.go_upstairs()),
-                     'downstair': RoomObject('downstair', "v", usage=lambda: RoomObject.go_downstairs()),
+    _room_objects = {'upstair': RoomObject('upstair', "^", usage=lambda: RoomObject.go_upstair()),
+                     'downstair': RoomObject('downstair', "v", usage=lambda: RoomObject.go_downstair()),
                      'marchand': RoomObject('marchand', "€", usage=lambda: RoomObject.meet_trader()),
                      }
 
@@ -1905,17 +1887,17 @@ class Game(object):
 
         place_hero = True
         rand = random.randint(0, self.nb_floors - 2)
-        marchand = None
 
         for i in range(self.nb_floors):
             print('Building Floor ' + str(i + 1) + '/' + str(self.nb_floors))
 
             if i == rand:
-                self.floorList.append(Map(hero=self.hero, putHero=place_hero, floorNumber=i, specialRoom='marchand'))
+                self.floorList.append(Map(hero=self.hero, put_hero=place_hero, floor_number=i, special_room='marchand'))
             elif i == self.nb_floors - 1:
-                self.floorList.append(Map(hero=self.hero, putHero=place_hero, floorNumber=i, specialRoom='finalBoss'))
+                self.floorList.append(
+                    Map(hero=self.hero, put_hero=place_hero, floor_number=i, special_room='finalBoss'))
             else:
-                self.floorList.append(Map(hero=self.hero, putHero=place_hero, floorNumber=i))
+                self.floorList.append(Map(hero=self.hero, put_hero=place_hero, floor_number=i))
             place_hero = False
 
         self.gv.floor = self.floor = self.floorList[self.actualFloor]
@@ -1945,7 +1927,6 @@ class Game(object):
 
         return res
 
-    # TODO : Redo this function
     def add_message(self, msg):
         """Adds a message in the message list."""
 
@@ -1995,9 +1976,8 @@ class Game(object):
         height = self.gv.height = info_object.current_h - 60
         width = self.gv.width = info_object.current_w
 
-        # orig_x = self.gv.orig_x = width/10
-        orig_x = self.gv.orig_x = width / 4 - 10 * Map.sizeFactor
-        orig_y = self.gv.orig_y = height / 6
+        self.gv.orig_x = width / 4 - 10 * Map.sizeFactor
+        self.gv.orig_y = height / 6
 
         self.gv.screen = pygame.display.set_mode((width, height))
 
@@ -2020,7 +2000,6 @@ class Game(object):
 
         while self.gv.running:
 
-            # pygame.time.Clock().tick()
             pygame.time.delay(50)
 
             if self.gv.frame_count > 10:

@@ -1,19 +1,13 @@
 import pygame
 
-i = 0
 
-
-# TODO : Rendre le loading plus rapide en ne loadant qu'une seule fois
 def get_image(name):
-    global i
     dest = "Images/Elements/"
-    sizeFactor = round(16 * 1.25)
+    size_factor = round(16 * 1.25)
     # print(dest+name)
     image = pygame.image.load(dest + name)
-    i += 1
-    print('executing loading', i)
 
-    return pygame.transform.scale(image, (sizeFactor, sizeFactor))
+    return pygame.transform.scale(image, (size_factor, size_factor))
 
 
 ground_cell_paths = ["Background/FloorTopLeft.png",
@@ -36,7 +30,7 @@ ground_cell_surfaces = [get_image(img_path) for img_path in ground_cell_paths]
 def cases_ground(key, floor):
     e = floor.empty
     g = floor.ground
-    cases_ground = {
+    ground_cells = {
         (e, g, e, g): ground_cell_surfaces[0],
         (e, g, g, g): ground_cell_surfaces[1],
         (e, g, g, e): ground_cell_surfaces[2],
@@ -52,9 +46,9 @@ def cases_ground(key, floor):
         (g, g, e, e): ground_cell_surfaces[9],
         (e, e, g, g): ground_cell_surfaces[10]
     }
-    if key not in cases_ground:
+    if key not in ground_cells:
         return False
-    return cases_ground[key]
+    return ground_cells[key]
 
 
 empty_cells_paths = [
