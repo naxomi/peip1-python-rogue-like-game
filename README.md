@@ -7,3 +7,13 @@ We were asked to create a rogue-like game using python. We could use external mo
 The graphical interface was not mandatory but added points to the mark.
 
 The foundation of the project was made at school by following the teacher's indications. We could then add pretty much anything we wanted but had instructions on fonctionnality ideas that would bring more or less points to the mark.
+
+--- UPDATE ---
+
+Result : 19/20
+
+Completion : 8
+Progression : 4
+Game quality : 3
+Code quality : 2
+Report : 2
