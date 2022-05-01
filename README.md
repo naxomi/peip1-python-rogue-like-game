@@ -1,3 +1,5 @@
+⚠️️ ️WARNING ⚠️ : The code needs a lot of refactoring. The core of the code was created from the teacher and wasn't allowing us to store classes in separate files (problems of circular import).
+
 This project was created in the second term of my first year of college. 
 The class was called "Object Oriented Programming" and had the purpose to teach us the basics of OOP using Python.
 
